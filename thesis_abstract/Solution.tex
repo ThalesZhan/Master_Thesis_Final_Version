@@ -1,0 +1,111 @@
+\documentclass[papersize]{suribtabst}
+\usepackage{Mydef}
+%\usepackage{titlesec}
+%\usepackage[left=1in,right=1in,top=1in,bottom=1in]{geometry}
+\usepackage[
+  %backref,          % Enable back references
+  sorting=nyt,      % Sort by name, year, title
+  style=trad-abbrv  % Use trad-abbrv style
+]{biblatex}
+\addbibresource{reference.bib}
+\usepackage{setspace}
+
+\title{Optimization over Orbit Closures of Real Reductive Lie Group Actions}
+\author{Zhan Zhiyuan}
+\eauthor{Zhan Zhiyuan}
+\studentid{48206241}
+\supervisor{Professor Hiroshi Hirai}
+\handin{2022}{8}
+
+
+\begin{document}
+	\maketitle
+
+	\section{Introduction}
+
+	Sinkhorn \cite{key14} introduced the matrix scaling problem, that is, given a nonnegative matrix $A$ to determine whether there are positive diagonal matrices $X,Y$ such that $XAY$ is doubly stochastic or approximately doubly stochastic. This problem has many applications, such as the existence of perfect matching in a bipartite graph, polynomial identity testing, and so on. Gurvits \cite{key15} generalized this problem to the operator scaling problem, which is applied to the noncommutative polynomial identity testing, the Brascamp–Lieb inequalities, and so on. 
+
+	These two problems are special cases of a classic problem arising from the invariant theory. Let $(\pi,V)$ be an action of an algebraic group $G$, that is, $\pi(g) \in GL(V)$ for any $g \in G$, where $V$ is a vector space. The problem is to determine whether $0$ is in the orbit closure $\clo{\pi(G)v}$ of $v\in V$, called the null cone membership. Besides above scaling problems, the tensor scaling problem, Horn's problem, and many other problems, are concrete cases of the null cone membership. This problem has another view. For any such action and nonzero $v \in V$, there is the Kempf-Ness function $f_v \colon G \sto \R$. $0$ is not in the orbit closure $v$ if and only if $f_v$ is bounded below, and if and only if $0$ is in $\clo{\nabla f_v(G)}$, the closure of the image of the gradient. Therefore, it is related to some optimization problem.
+
+	\section{Previous Research and This Work}
+
+	For a complex reductive algebraic group $G$ acting on a complex vector space $V$, B{\"u}rgisser et al. \cite{key8} transformed this problem into optimizing the Kempf-Ness function $f_v(g) \defeq \log{\norm{\pi(g)v}^2}$. Moreover, let $K = G \cap U(n)$ be a maximal compact subgroup of $G$, then the norm $\norm{\cdot}$ on $V$ is $K$-invariant. Therefore, $f_v$ is defined on $G/K$, which has a standard Riemannian structure. The null cone membership is related to an optimization problem on a Riemannian manifold. They also showed $f_v$ is geodesically convex and $L$-smooth for some $L>0$. If $0$ is not in the orbit closure of $v$, then clearly $f_{v,\inf}\defeq\inf f_v > -\infty$. The norm minimization problem is to find $g \in G$ such that $f_v(g)$ is closed to $f_{v,\inf}$ and the scaling problem is to find $g \in G$ such that $\nabla f_v(g)$ is closed to $0$. They applied the first order and second order algorithms to optimize $f_v$ to consider these two problems. Because of the smoothness and convexity of $f_v$, the iteration complexity of these algorithms has an explicit formula. Furthermore, for some special cases, they showed these algorithms can be applied to solve the null cone membership.
+
+	This work is an extension of \cite{key8}. We consider the above problems for real reductive Lie group actions and extend some of the results in \cite{key8} to the real case without considering the complex structure. Let $G \subset G(n,\R)$ be a real reductive Lie group and $K = G \cap O(n)$, the orthogonal group. Then $P \simeq G/K$, where $P = G \cap P(n)$, the set of all positive definite matrices. For any action of $G$ on $V$, there is also an inner product $\inn{\cdot,\cdot}$ that is $K$-invariant. Therefore, we define the Kempf-Ness function $f_v \colon P \sto \R$. Then the norm minization problem is to minimize $f_v$ on $P$. Moreover, we equip $P$ with the standard Riemannian structure. The scaling problem is to minimize the gradient $\nabla f_v$ on $P$.
+
+	\textbf{Contributions and Results:} 
+	\begin{enumerate}[label=(\arabic*)]
+		\item $f_v$ defined on $P$ is geodesically convex and $L$-smooth for $L>0$.
+		\item Because of the smoothness of $f_v$, applying the Riemannian gradient descent (RGD) algorithm to $f_v$ solves the scaling problem.
+		\item By extending the result in the complex case \cite{key8},
+		\begin{equation*}
+			f_v(x)- f_{v,\inf} \geqslant C\norm{\nabla f_v(x)}_x,
+		\end{equation*}
+		the RGD algorithm solves the norm minimization problem.
+		\item We also analyze a general scaling problem on $P$ by employing the results in \cite{key12}.
+	\end{enumerate}
+
+	\section{Optimization on Riemannian Manifold}
+
+	Let $(\pi,V)$ be an action of real reductive Lie group $G$ and $P = G \cap P(n)$. Defining the Kempf-Ness function $f_v(x) = \log \inn{v,\pi(x)v}$ for any $x \in P$. 
+	\begin{thm}
+		$f_v$ is geodesically convex on $P$.
+	\end{thm}
+	Given $\varepsilon > 0$ and $v \in V$ such that $f_{v,\inf} > -\infty$, 
+	\begin{itemize}
+		\item {Scaling Problem:} find $x_s \in P$, such that
+		\begin{equation*}
+			\norm{\nabla f_v(x_s)}_{x_s} < \varepsilon.
+		\end{equation*}
+		\item {Norm Minimization Problem:} find $x_n \in P$, such that
+		\begin{equation*}
+			f_v(x_n) - f_{v,\inf} < \varepsilon.
+		\end{equation*}
+	\end{itemize}
+	These problems are related to optimizing $f_v$ on P.
+
+	We apply the RGD algorithm to $f_v$, that is, let $x_0 = I$ and updating $x_1,\cdots,x_T$ by
+	\begin{equation*}
+		x_{t+1} = x_t^{\frac{1}{2}}e^{-\eta x_t^{-\frac{1}{2}}\nabla f_v(x_t) x_t^{-\frac{1}{2}}}x_t^{\frac{1}{2}},
+	\end{equation*}
+	and then returning $x_s$ such at $\norm{\nabla f_v(x_s)}_{x_s}$ attaches the minimum of all $\norm{\nabla f_v(x_t)}_{x_t}$. In order to find an appropriate $T$ and $\eta$ in RGD, we extend the definition of weight norm $N(\pi)$ in \cite{key8} to the real case and prove the smoothness of $f_v$.
+	\begin{thm}
+		$f_v$ is $N(\pi)^2$-smooth, that is,
+      \begin{equation*}
+        \abs{\frac{d^2}{dt^2}f\bc{x^{\frac{1}{2}}e^{tX}x^{\frac{1}{2}}}} \leqslant N(\pi)^2\norm{X}_{F}^2,
+      \end{equation*}
+      for any $x\in P$ and any matrix $X$ such that $e^X \in P$.
+	\end{thm}
+	Therefore, for any $\varepsilon > 0$, by setting 
+	\begin{equation*}
+		\eta=\frac{1}{N(\pi)^2},~T > \frac{2N(\pi)^2}{\varepsilon^2}\bc{\log \norm{v}^2-f_{v,\inf}}
+	\end{equation*}
+	in the RGD algorithm, it returns $x_s$ such that $\norm{\nabla f_v(x_s)}_{x_s} < \varepsilon$ by \cite{key7}.
+
+	For the norm minimization problem, we find a relation between $f_v(x)- f_{v,\inf}$ and $\norm{\nabla f_v(x)}_{x}$, which is an extension of the complex case \cite{key8}. We define a parameter $\gamma(\pi)$, called the weight margin.
+	\begin{thm}
+		It holds that
+		\begin{equation*}
+			f_v(x)- f_{v,\inf} \geqslant\log\bc{1-\frac{\norm{\nabla f_v(x)}_{x}}{\gamma(\pi)}}^{-1}.
+		\end{equation*}
+	\end{thm}
+	Therefore, for any $0<\varepsilon<\log 2$, if $\norm{\nabla f_v(x)}_{x}$ is less than $\frac{1}{2}\gamma(\pi)\varepsilon$, then $f_v(x)- f_{v,\inf} < \varepsilon$. %The RGD algorithm returns $x_n$ solving the norm minimization problem.
+
+	For any nonzero $v \in V$, defining $\mu(v) = \nabla f_v(I)$, called the moment map. The moment polytope is
+	\begin{equation*}
+		\Delta(v) \defeq \bb{s\bc{\mu(w)} \colon w \in \clo{\pi(G)\cdot v}},
+	\end{equation*}
+	where $s\bc{\mu(w)} = \diag\bc{\lambda_1,\cdots,\lambda_n}$ with $\lambda_1 \geqslant \cdots \geqslant\lambda_n$ and all $\lambda_i$ are eigenvalues of $\mu(w)$. Let $p \in \Delta(v)$. The $p$-scaling problem is to find $g \in G$ such that $\norm{s\bc{\mu(\pi(g)v)}-p}_{F} < \varepsilon$. Hirai \cite{key12} showed $f_v+b_p$ is bounded below for $p \in \Delta(v)$, where $b_p$ is the Busemann function defined on $P$. They also showed
+	\begin{equation*}
+		\norm{\nabla(f_v+b_p)(x)}_{x} = \norm{\mu(\pi(x^{\frac{1}{2}})v)-ks(X)k^T}_{F},
+	\end{equation*}
+	where $x^{\frac{1}{2}} = bk$ is the RQ decomposition. Therefore, optimizing $f_v+b_p$ can solve the $p$-scaling problem.
+
+	\section{Conlusions}
+
+	This work optimized the Kempf-Ness function by the RGD algorithm. This method solves the scaling problem and the norm minimization problem of real reductive Lie group actions, because of the smoothness of the Kempf-Ness function. The $p$-scaling problem can also be viewed as an optimization problem by applying the Busemann function.
+
+	\begin{spacing}{0.8}
+		\printbibliography
+	\end{spacing}
+\end{document}

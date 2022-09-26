@@ -1,0 +1,1333 @@
+\documentclass[suri,pdfbookmark]{engsuribt} % Select from {mi, suri, ipc, system}
+
+\usepackage{Mydef}
+
+% Bibliography
+\usepackage[
+  %backref,          % Enable back references
+  sorting=nyt,      % Sort by name, year, title
+  style=trad-abbrv  % Use trad-abbrv style
+]{biblatex}
+\addbibresource{reference.bib}  % Change to your .bib file
+
+% PDF hyperlinks and bookmarks
+\usepackage[
+  bookmarksnumbered,   % Add chapter and section numbers to bookmarks
+  pdfdisplaydoctitle,  % Show the document title in the title bar
+  pdfusetitle,         % Reflect \title and \author to PDF file's meta data
+]{hyperref}
+
+\title{Optimization over Orbit Closures of \\ Real Reductive Lie Group Actions}
+\jtitle{実簡約リー群作用の軌道閉包上の最適化}
+\author{Zhan Zhiyuan}
+\jauthor{占 志遠}
+\studentid{48206241}
+\supervisor{Professor Hiroshi Hirai}
+\handin{2022}{7}
+
+\begin{document}
+\raggedbottom
+\maketitle
+
+\frontmatter
+\begin{abstract}
+  Given an algebraic group acting on a vector space, determining whether $0$ is in an orbit closure is a classical problem in invariant theory. This problem and its dual problem, the scaling problem, are connected with many problems arising from mathematics, physics, and computer science. For a complex reductive group, B{\"u}rgisser et al.  transformed this problem into a geodesically convex optimization problem on a Riemannian manifold, which is a new type of non-convex optimization problem. Furthermore, they developed two algorithms to solve this problem and showed their iteration complexity. Their work motivates us to analyze this problem over $\R$ and to extend their results to the real case. Specifically, we consider real reductive Lie group actions. Because of the special structure of real reductive Lie groups, these problems can also be optimization problems on a Riemannian manifold. We apply the Riemannian gradient descent algorithm (RGD algorithm) to the Kempf-Ness function to analyze them. We establish the smoothness and convexity of the Kempf-Ness function and show that the RGD algorithm can solve the scaling problem. Finally, we consider a more general version of the scaling problem and also transform it into an optimization problem.
+\end{abstract}
+
+\tableofcontents
+
+\mainmatter  % Write contents in the following
+
+\chapter{Introduction}
+
+  \section{Motivations}
+
+  Let $A = \bc{a_{ij}}$ be a nonnegative matrix in $M_{n}(\R)$ that is $a_{ij} \geqslant 0$ for any $i,j$. If there are two positive diagonal matrices $X= \diag\bc{x_i}$ and $Y=\diag\bc{y_j}$ such that the matrix $XAY = \bc{x_ia_{ij}y_j}$ satisfies
+  \begin{equation*}
+    \begin{split}
+      \sum_{j=1}^n x_ia_{ij}y_j = 1,&~\forall~i=1,\cdots,n,\\
+      \sum_{i=1}^n x_ia_{ij}y_j = 1,&~\forall~j=1,\cdots,n,
+    \end{split}
+  \end{equation*}
+  then $XAY$ is called doubly stochastic and $A$ is called doubly stochastic scalable or simply, scalable. Given a nonnegative matrix $A$, the problem is to determine whether $A$ is doubly stochastic scalable or to determine whether $A$ is almost doubly stochastic scalable or almost scalable, that is, for any $\varepsilon > 0$, if there are positive diagonal matrices $X$ and $Y$ such that
+  \begin{equation*}
+    \norm{XAY\mathds{1}-\mathds{1}}_2 < \varepsilon,~\norm{YA^TX\mathds{1}-\mathds{1}}_2 < \varepsilon,
+  \end{equation*}
+  where $\norm{\cdot}_2$ is the $l_2$-norm and $\mathds{1} = (1,\cdots,1)^T \in \R^n$. 
+
+  These problems were introduced by Sinkhorn \cite{key14}, and Sinkhorn gave an algorithm by iteratively normalizing the row vectors and column vectors of $A$. \vspace{0.5em}\\ 
+  \textbf{Sinkhorn's Algorithm}: Give a nonnegative matrix $A = \bc{a_{ij}}$,
+  \begin{itemize}
+    \item Multiply each row $i$ with $1/\sum_{j=1}^n a_{ij}$ to obtain matrix $A^{\prime} = \bc{a^{\prime}_{ij}}$;
+    \item Multiply each column $j$ with $1/\sum_{i=1}^n a^{\prime}_{ij}$ to obtain matrix $A^{\prime\prime} = \bc{a^{\prime\prime}_{ij}}$;
+    \item If the row sums of $A^{\prime\prime}$ are far from $\mathds{1}$, $A \leftarrow A^{\prime\prime}$ and repeat the above steps.
+  \end{itemize}
+  In \cite{key14}, Sinkhorn proved that if $A=\bc{a_{ij}}$ is positive that is $a_{ij} > 0$, then Sinkhorn's algorithm is convergent. More generally, \cite{key17} showed that $A$ is almost doubly stochastic scalable if and only if Sinkhorn's algorithm is convergent.
+
+  This problem is generalized to the $(\mathbf{r},\mathbf{c})$-scaling problem. Given a nonnegative matrix $A$ and two positive vectors $\mathbf{r}$ and $\mathbf{c}$ with the same $l_1$-norm $R$, if there are positive diagonal matrices $X$ and $Y$ such that the matrix $B = XAY$ satisfies
+  \begin{equation*}
+    B\mathds{1} = \mathbf{r},~B^T\mathds{1} = \mathbf{c},
+  \end{equation*}
+  then $A$ is called $(\mathbf{r},\mathbf{c})$-scalable. For any $\varepsilon > 0$, if there are positive diagonal matrices $X,Y$ such that $B = XAY$ satisfies
+  \begin{equation*}
+    \norm{B\mathds{1}- \mathbf{r}}_2 < \varepsilon,~\norm{B^T\mathds{1}- \mathbf{c}}_2 < \varepsilon,
+  \end{equation*}
+  then $A$ is called almost $(\mathbf{r},\mathbf{c})$-scalable. For a matrix $A \in M_n(\R)$, a zero minor $I \times J$ in $A$ is $I,J \subset \bb{1,\cdots,n}$ such that  $a_{ij}=0$ for any $i\in I$ and $j \in J$. Rothblum and Schneider characterized this problem.
+  \begin{thm}[\cite{key1}]
+    Given a nonnegative matrix $A$ and two positive vectors $\mathbf{r}=\bc{r_i}$ and $\mathbf{c}=\bc{c_j}$ with
+    \begin{equation*}
+      R = \sum_{i=1}^n r_i = \sum_{j=1}^n c_j.
+    \end{equation*}
+    $A$ is almost $(\mathbf{r},\mathbf{c})$-scalable if and only if for every zero minor $I \times J$ of $A$, 
+    \begin{equation*}
+      \sum_{i \in I}r_i + \sum_{j \in J}c_j \leqslant R.
+    \end{equation*}
+  \end{thm}
+  The matrix scaling problem is connected with many problems, like the existence of perfect matchings in a bipartite graph, commutative singularity testing, and so on; see in \cite{key18}.
+
+  Gurvits \cite{key15} generalized the matrix scaling problem to a problem, called operator scaling problem, which is related to quantum information theory, the noncommutative singularity testing, and so on. Given $A_1, \cdots, A_m \in M_n(\C)$, $T \colon M_n(\C) \sto M_n(\C)$ defined by
+  \begin{equation*}
+    T(X) \defeq \sum_{i=1}^m A_iXA_i^{\dagger},~\forall~X \in M_n(\C)
+  \end{equation*}
+  is called a completely positive operator, denoted by $T = \bc{A_1, \cdots, A_m}$. And its conjugation $T^{*} \colon M_n(\C) \sto M_n(\C)$ is defined by
+  \begin{equation*}
+    T^*(X) \defeq \sum_{i=1}^m A_i^{\dagger}XA_i,~\forall~X \in M_n(\C).
+  \end{equation*}
+  For a completely positive operator $T = \bc{A_1, \cdots, A_m}$, if there are positive definite $g,h$ in $GL(n,\C)$ such that the operator $\tilde{T}= \bc{gA_1h^{\dagger}, \cdots, gA_mh^{\dagger}}$ satisfies
+  \begin{equation*}
+    T(I) = I,~T^*(I) = I,
+  \end{equation*}
+  then $T = \bc{A_1, \cdots, A_m}$ is called scalable. Or for any $\varepsilon > 0$, if there are positive definite $g,h\in GL(n,\C)$ such that the operator $\tilde{T}= \bc{gA_1h^{\dagger}, \cdots, gA_mh^{\dagger}}$ satisfies
+  \begin{equation*}
+    \norm{\tilde{T}(I)-I}_{\Fr} < \varepsilon,~\norm{\tilde{T}^*(I)-I}_{\Fr} < \varepsilon,
+  \end{equation*}
+  where $\norm{\cdot}_{\Fr}$ is the Frobenius norm of matrices, then $T = \bc{A_1, \cdots, A_m}$ is called almost scalable. 
+
+  For the almost scalability of completely positive operators, there is a similar result as Rothblum and Schneider's theorem for the matrix scaling problem.
+  \begin{thm}[\cite{key4,key15}]
+    Given a completely positive operator $T = \bc{A_1, \cdots, A_m}$, $T$ is not almost scalable if and only if there exist $g,h \in GL(n,\C)$ such that all $gA_ih$ have a common zero minor $I \times J$ with $\abs{I} + \abs{J} > n$.
+  \end{thm}
+  Also, Gurvits gave an algorithm to solve this problem by iteratively normalizing $T$.\vspace{0.5em}\\
+  \textbf{Gurvits' Algorithm}: Give $T = \bc{A_1, \cdots, A_m}$,
+  \begin{itemize}
+    \item Updating $A_i$ to $A_i^{\prime}$ by $\bc{\sum_jA_jA_j^{\dagger}}^{-\frac{1}{2}}A_i$;
+    \item Updating $A_i^{\prime}$ to $A_i^{\prime\prime}$ by $A_i^{\prime}\bc{\sum_jA_j^{\prime \dagger}A_j^{\prime}}^{-\frac{1}{2}}$;
+    \item If $T^{\prime\prime}(I)$ is too far from $I$, $T \leftarrow T^{\prime\prime}$ and repeat the above steps.
+  \end{itemize} 
+  Garg et al. \cite{key13} proved that Gurvits' algorithm can determine whether a given completely positive operator is almost scalable. 
+
+  These two problems actually have a more general version related to the classical invariant theory and the geometric invariant theory.
+
+  \section{Null Cone and Moment Map}
+
+  Let $G$ be a subgroup in $GL(n,\C)$ and there are finitely many polynomials $f_1,\cdots,f_l$ defined on $GL(n,\C) = \C^{n^2}$ such that
+  \begin{equation*}
+    G = \bb{g \in GL(n,\C) \colon f_i(g) = 0,~\forall~i=1,\cdots,l}.
+  \end{equation*}
+  Then $G$ is called an algebraic group. Moreover, if for any $g \in G$, $g^{\dagger} \in G$, then $G$ is called a complex reductive algebraic group; see in \cite{key5}. 
+
+  Let $V$ be a finite-dimensional complex vector space, i.e., $V \simeq \C^m$. If the group homomorphism $\pi \colon G \sto GL(V)$ satisfies each entry $\pi(g)_{ij}$ is a polynomial in $g$ and $\det g^{-1}$ when viewing $\pi(g)$ as a matrix $\bc{\pi(g)_{ij}}$ in $GL(V) \simeq GL(m,\C)$, then $(\pi,V)$ is called a rational representation of $G$. We call $G$ acting on $V$ rationally by denoting $\pi(g) v = g \cdot v$.
+
+  Let $\C[V]$ be the set of all polynomials defined on $V \simeq \C^m$. Then the action of $G$ on $V$ induces an action of $G$ on $\C[V]$ defined as
+  \begin{equation*}
+    g \cdot f(v) \defeq f\bc{g^{-1}\cdot v}.
+  \end{equation*}
+  Let $\C[V]^G$ be the set of $f \in \C[V]$ such that $g \cdot f = f$ for all $g \in G$, called the invariant polynomial ring. This ring is the main object of study in invariant theory; see in \cite{key19}.
+
+  In invariant theory, the null cone is the subset
+  \begin{equation*}
+    \mathcal{N} \defeq \bb{v \in V \colon f(v) = 0,~\forall~f \in \C[V]^G}.
+  \end{equation*}
+  When equipping $V$ with an inner product, $\mathcal{N}$ has a geometric interpretation,
+  \begin{equation*}
+    \mathcal{N} \defeq \bb{v \in V \colon 0 \in \clo{G \cdot v}},
+  \end{equation*}
+  where the closure is with respect to the topology induced by any inner product on $V$. 
+
+  Hilbert \cite{key2} and Mumford \cite{key3} gave a criterion to determine whether $v \in \mathcal{N}$. Let $\C^* = \C \backslash \bb{0}$. A group homomorphism $\lambda \colon \C^* \sto G$ is called a one-parameter subgroup if each entry $\lambda(t)_{ij}$ is a polynomial in $t$ and $t^{-1}$ for $\lambda(t) = \bc{\lambda(t)_{ij}} \in GL(n,\C)$.
+  \begin{thm}[Hilbert-Mumford criterion]
+    Let $G$ be a complex reductive algebraic group in $GL(n,\C)$ and $G$ act on $V$ rationally. Then $v \in \mathcal{N}$ if and only if there is a one-parameter subgroup $\lambda \colon \C^* \sto G$ such that $\lim_{t \sto \infty}\lambda(t) \cdot v = 0$. 
+  \end{thm}
+
+  For the matrix scaling problem, let $G = ST(n)\times ST(n)$ and $V = M_n(\C)$ and $G$ act on $V$ defined as
+  \begin{equation*}
+    (X,Y) \cdot A \defeq XAY,
+  \end{equation*}
+  where
+  \begin{equation*}
+    ST(n) = \bb{\diag\left(t_1,\cdots,t_n\right) \colon t_j \in \C \backslash \bb{0},~\prod_{j=1}^n t_j = 1}.
+  \end{equation*}
+  Then $G$ is a reductive algebraic group in $GL(n,\C)$ and this action is rational. By the definition, any one-parameter subgroup $\lambda$ of $G$ has the form
+  \begin{equation*}
+    \lambda(t) = \bc{\diag\bc{t^{\alpha_1},\cdots,t^{\alpha_n}},\diag\bc{t^{\beta_1},\cdots,t^{\beta_n}}},
+  \end{equation*}
+  where $\alpha_i,\beta_i \in \Z$ for any $i$ and
+  \begin{equation*}
+    \sum_{i=1}^n \alpha_i = \sum_{i=1}^n \beta_i = 0.
+  \end{equation*}
+  For any $A =\bc{a_{ij}}$, 
+  \begin{equation*}
+    \lambda(t) \cdot A = \bc{t^{\alpha_i+\beta_j}a_{ij}}.
+  \end{equation*}
+  So by Hilbert-Mumford criterion and Rothblum and Schneider's theorem,
+  \begin{equation*}
+    \begin{split}
+      A \in \mathcal{N}~\Leftrightarrow~&\exists~\alpha_1,\cdots,\alpha_n,\beta_1,\cdots,\beta_n \in \Z, \\
+      & \sum_{i=1}^n \alpha_i = \sum_{i=1}^n \beta_i = 0, \\
+      & \text{ s.t. }\alpha_i+\beta_j > 0,~\forall~ (i,j) \in \supp A \defeq \bb{(i,j) \colon a_{ij} \neq 0},\\
+      \Leftrightarrow~& A \text{ is not almost doubly stochastic scalable}. 
+    \end{split}
+  \end{equation*}
+  Therefore, determining whether $A$ is almost scalable is equivalent to the null cone membership of $A$, that is, to determine whether $A \in \mathcal{N}$.
+
+  For the operator scaling problem, let $G = SL(n,\C) \times SL(n,\C)$ act on $V = M(n,\C)^{\oplus m}$ by
+  \begin{equation*}
+    (g,h) \cdot (A_1,\cdots,A_m) \defeq (gA_1h^{\dagger},\cdots,gA_mh^{\dagger}).
+  \end{equation*}
+  And any one-parameter subgroup $\lambda$ of $G$ has the form
+  \begin{equation*}
+    \lambda(t) = \bc{g^{-1}\diag\bc{t^{\alpha_1},\cdots,t^{\alpha_n}}g,h^{-1}\diag\bc{t^{\beta_1},\cdots,t^{\beta_n}}h},
+  \end{equation*}
+  where $g,h \in SL(n,\C)$ and $\alpha_i,\beta_i \in \Z$ for any $i$ such that
+  \begin{equation*}
+    \sum_{i=1}^n \alpha_i = \sum_{i=1}^n \beta_i = 0.
+  \end{equation*}
+  By Hilbert-Mumford criterion, $T = (A_1,\cdots,A_m)$ is in the null cone if and only if there are $g,h \in SL(n,\C)$ and $\alpha_i,\beta_i \in \Z$ with
+  \begin{equation*}
+    \sum_{i=1}^n \alpha_j = \sum_{i=1}^n \beta_j = 0
+  \end{equation*}
+  such that
+  \begin{equation*}
+    \alpha_i+\beta_j > 0,~\forall~ (i,j) \in \bigcap_{k=1}^m\supp(gA_kh^{-1}),
+  \end{equation*}
+  which means that $T = (A_1,\cdots,A_m)$ is not almost scalable by above theorem. 
+
+  Therefore, we see that determining whether a matrix or a completely positive operator is almost scalable is a special case of determining whether a vector is in the null cone of some rational action.
+  \begin{prob}[Null cone membership]
+    Given a rational action of $G$ on $V$ and $v \in V$, determine whether $v \in \mathcal{N}$.
+  \end{prob}
+
+  There is another view to consider this problem from the so-called Kempf-Ness theorem. Let $G \subset GL(n,\C)$ be a complex reductive algebraic group with its Lie algebra
+  \begin{equation*}
+    \alg{g} \defeq \bb{X \in M_n(\C) \colon e^{tX} \in G,~\forall~t \in \R}.
+  \end{equation*}
+  For any rational representation $(\pi,V)$ of $G$, there is $\Pi \colon \alg{g} \sto \alg{gl}(V)$ defined as
+  \begin{equation*}
+    \Pi(X) v  \defeq   \lv{\frac{d}{dt}}_{t=0} \pi\bc{e^{tX}}v,
+  \end{equation*}
+  where $\alg{gl}(V)$ is the set of all linear transformations defined on $V$. 
+
+  Let $K = G \cap U(n)$ with Lie algebra $\alg{k} = \bb{X \in \alg{g} \colon X^{\dagger}=-X}$, where $U(n)$ is the unitary group. And there is a decomposition, called the Cartan decomposition of $\alg{g}$,
+  \begin{equation*}
+    \alg{g} = \alg{k} + i\alg{k}.
+  \end{equation*}
+  In fact, $i\alg{k} = \alg{g} \cap \Herm(n)$, the intersection of Hermitian matrices. Moreover, given a rational representation $(\pi,V)$, there is an inner product defined on $V$ such that $\pi(g)^{\dagger} = \pi(g^{\dagger})$; see in \cite{key5}. For a nonzero $v \in V$, there is a function $f_v \colon G \sto \R$, called the Kempf-Ness function,
+  \begin{equation*}
+    f_v(g) \defeq \frac{1}{2}\log \norm{\pi(g)v}^2.
+  \end{equation*}
+  The moment map $\mu \colon V\backslash \bb{0} \sto i\alg{k}$ is defined as the gradient of $f_v$ at $I$, that is
+  \begin{equation*}
+    \tr\bc{\mu(v) X} \defeq \lv{\frac{d}{dt}}_{t=0} f_v(e^{tX}) = \frac{\inn{v, \Pi(X) v}}{\norm{v}^2}.
+  \end{equation*}
+  The Kempf-Ness theorem provides a dual condition of null cone membership.
+  \begin{thm}[\cite{key6}]
+    Given a rational action of $G$ on $V$ and a nonzero $v \in V$, then
+    \begin{equation*}
+      0 \notin \clo{\pi(G) v} ~\Leftrightarrow~ 0 \in \mu\bc{\clo{\pi(G)v}}.
+    \end{equation*}
+  \end{thm}
+
+  Considering the matrix scaling problem, the Kempf-Ness funtion for $A=(a_{ij})$ can be defined as
+  \begin{equation*}
+    f_A(x,y) = \log \bc{\frac{\bc{x^TAy}^n}{\prod_{i=1}^nx_i \prod_{j=1}^ny_j}} \footnote{slightly modifing the original definition defined on $(\R^+)^{n} \times (\R^+)^{n}$},
+  \end{equation*}
+  where $x=(x_i),y=(y_j) \in \R^n$ with $x_i,y_j > 0$. Let $x_i = e^{s_i}$ and $y_j = e^{t_j}$, then the gradient of $f_A$ is given by
+  \begin{equation*}
+    \nabla f_A(s,t) = \frac{n}{\sum_{i,j}x_ia_{ij}y_j} \bc{\sum_j x_ia_{ij}y_j,\sum_i x_ia_{ij}y_j} - \bc{\mathds{1},\mathds{1}},
+  \end{equation*}
+  and it is actually the moment map of this action. Clearly, 
+  \begin{center}
+    $A$ is almost scalable $\Leftrightarrow$ $0 \in \clo{\nabla f_A(\R^n,\R^n)}$.
+  \end{center}
+  $\clo{\nabla f_A(\R^n,\R^n)}$ is the image of the moment map on the orbit closure. Combining with Rothblum-Schneider's theorem, it is an example of the Kempf-Ness Theorem.
+
+  For the operator scaling problem, by a similar calculation, the moment map for $X = (X_1,\cdots,X_m)$ is defined as
+  \begin{equation*}
+    \mu(X) = \frac{1}{\norm{X}^2}\bc{\sum_{i=1}^mX_iX_i^{\dagger} - \frac{\norm{X}^2}{n}I_n,~\sum_{i=1}^mX_i^{\dagger}X_i-\frac{\norm{X}^2}{n}I_n},
+  \end{equation*}
+  where $\norm{X}^2 = \sum_i \norm{X_i}_{\Fr}^2$. Clearly, 
+  \begin{center}
+    $X$ is almost scalable $\Leftrightarrow$ $0 \in \mu(\clo{\pi(G)X})$.
+  \end{center}
+
+  Therefore, the matrix scaling and the operator scaling are special cases of the problem if $0$ is the image of the moment map on the orbit closure. \cite{key8} defined the scaling problem for rational actions of a complex reductive algebraic group.
+  \begin{prob}[Scaling problem]
+    Given a complex reductive algebraic group $G$ acting rationally on $V$ and $v \in V$ such that $0 \in \mu(\clo{\pi(G)v})$ and $\varepsilon > 0$, find a $g \in G$ such that $\norm{\mu(\pi(g)v)}_{\Fr} < \varepsilon$.
+  \end{prob}
+
+  \section{Previous Research}
+
+  \begin{prob}[Norm minimization problem]
+    Given $\varepsilon > 0$ and $(\pi,V)$ of $G$ and $v \in V$ such that $0 \notin \clo{\pi(G)v}$, find a $g \in G$ such that
+    \begin{equation*}
+      \log \norm{\pi(g)v}^2 - \log \cp(v)^2 < \varepsilon,
+    \end{equation*}
+    where $\cp(v) \defeq \inf_{g \in G}\norm{\pi(g)v}$.
+  \end{prob}
+
+  B{\"u}rgisser et al. \cite{key8} considered the scaling problem and norm minimization problem for a general rational action of a complex reductive algebraic group $G$ on $V$ by optimizing the Kempf-Ness function on $G$ from two algorithms. There are some results in the paper related to our research. 
+
+  Let $G \subset GL(n,\C)$ be a complex reductive algebraic group and $(\pi,V)$ be a rational representation of $G$ and $K = G \cap U(n)$ with Lie algebra $\alg{k}$.
+  \begin{itemize}
+    \item They introduced a parameter $N(\pi)$, called weight norm, defined as
+    \begin{equation*}
+      N(\pi) \defeq \max\bb{\norm{\Pi(X)}_{\op} \colon X \in i\alg{k},~\norm{X}_{\Fr} = 1},
+    \end{equation*}
+    where $\norm{\cdot}_{\op}$ is the operator norm defined for a matrix. Then for any $v \in V \backslash \bb{0}$, they showed
+    \begin{equation} \label{in:1}
+      f_v(g) + \tr\bc{\mu(\pi(g)v)X} \leqslant f_v\bc{e^{X}g} \leqslant f_v(g) + \tr\bc{\mu(\pi(g)v)X} + N(\pi)^2\norm{X}_{\Fr}
+    \end{equation}
+    for all $g \in G,X \in i\alg{k}$.
+
+    \item Applying the first order algorithm on $f_v$: let $g_0 = I$ and updating
+    \begin{equation*}
+      g_{t+1} = e^{-\eta \mu\bc{\pi(g_t)v}}g_t,~t = 0,1,\cdots,T-1,
+    \end{equation*}
+    then returning $g = \argmin \bb{\norm{\mu\bc{\pi(g_t)v}}_{\Fr} \colon t = 0,1,\cdots,T}$. If 
+    \begin{equation*}
+      \cp(v) = \inf_{g \in G} \norm{\pi(g)v} > -\infty,
+    \end{equation*}
+    then by setting $\eta = 1 / 2N(\pi)^2$ and 
+    \begin{equation*}
+      T > \frac{4N(\pi)^2}{\varepsilon^2}\log\bc{\frac{\norm{v}}{\cp(v)}},
+    \end{equation*}
+    the returning $g$ satisfies $\norm{\mu\bc{\pi(g)v}}_{\Fr} < \varepsilon$.
+
+    \item They induced a new parameter $\gamma(\pi)$, called the weight margin. Then the Kempf-Ness function is strengthened as
+    \begin{equation}\label{in:2}
+      1-\frac{\norm{\mu(v)}_{\Fr}}{\gamma(\pi)} \leqslant \frac{\cp(v)^2}{\norm{v}^2} \leqslant 1-\frac{\norm{\mu(v)}_{\Fr}^2}{4N(\pi)^2}.
+    \end{equation}
+
+    \item By setting $\eta = 1 / 2N(\pi)^2$ and 
+    \begin{equation*}
+      T > \frac{4N(\pi)^2}{\gamma(\pi)^2\varepsilon^2}\log\bc{\frac{\norm{v}}{\cp(v)}},
+    \end{equation*}
+    then the returning $g$ satisfies $\log \norm{\pi(g)v} - \log \cp(v) < \varepsilon$.
+  \end{itemize}
+
+  Moreover, by analyzing the parameters in the algorithm for polynomial representations of $GL(n,\C)$ or $SL(n,\C)$ or their products, these algorithms can be applied to solve the null cone membership. Besides the matrix scaling and operator scaling, there are many other concrete problems:
+  \begin{itemize}
+    \item Tensor scaling: $GL(n_1,\C)\times GL(n_2,\C)\times GL(n_3,\C)$ acting on $\C^{n_1}\otimes\C^{n_2}\otimes\C^{n_3}$ by
+    \begin{equation*}
+      (g_1,g_2,g_3) \cdot X \defeq (g_1\otimes g_2 \otimes g_3)X,
+    \end{equation*}
+    and the moment map of this action is actually the quantum marginals \cite{key21}.
+
+    \item Horn's problem: Given two Hermitian matrices $A$ and $B$, considering the information of eigenvalues of $A+B$. For this problem, let $G = GL(n,\C)^3$ act on $V = M(n,\C)^{\oplus 2}$ by
+    \begin{equation*}
+      (g_1,g_2,g_3) \cdot (X,Y) \defeq \bc{g_1Xg_3^{-1},g_2Yg_3^{-1}}.
+    \end{equation*}
+    Then the induced moment map is
+    \begin{equation*}
+      \mu(X,Y) = \frac{\bc{XX^\dagger,YY^\dagger,-X^\dagger X-Y^\dagger Y}}{\norm{X}^2+\norm{Y}^2}.
+    \end{equation*}
+
+    \item Brascamp–Lieb inequalities: Given $B=(B_1,\cdots,B_m)$ for $B_i \in M_{n_i \times n}(\R)$ and $p=(p_1,\cdots,p_m)$ for $p_i \geqslant 0$, get the information of $C \in (0,\infty]$ such that for any integrable $f_i \colon \R^{n} \sto \R_{\geqslant 0}$
+    \begin{equation*}
+      \int_{\R^n} \prod_{i=1}^mf_i\bc{B_i(x)} dx \leqslant C \prod_{i=1}^m \norm{f_i}_{1/p_i},
+    \end{equation*}
+    this question is related to the operator scaling problem \cite{key22}.
+  \end{itemize}
+
+  \cite{key8} also considered a more general scaling problem, like $(\mathbf{r},\mathbf{c})$-scalability of matrices. Given a rational representation $(\pi,V)$ of $G$ and a nonzero $v \in V$, the moment polytope is 
+  \begin{equation*}
+    \Delta(v) \defeq \bb{s\bc{\mu(w)} \colon w \in \clo{\pi(G)v}},
+  \end{equation*}
+  where $s\bc{\mu(w)} = \diag\bc{\lambda_1,\cdots,\lambda_n}$ with $\lambda_1 \geqslant \cdots \geqslant\lambda_n$ and all $\lambda_i$ are eigenvalues of $\mu(w)$. $\Delta(v)$ is actually a convex polytope in some Euclidean space \cite{key23}.
+
+  \begin{prob}[$p$-scaling problem]
+    Given $\varepsilon > 0$ and $(\pi,V)$ of $G$ and $v \in V$ such that $p \in \Delta(v)$, find a $g \in G$ such that
+    \begin{equation*}
+      \norm{s\bc{\mu(\pi(g)v)}-p}_{F} < \varepsilon.
+    \end{equation*}
+  \end{prob}
+  By applying the ``shifting trick'', they constructed a new Kempf-Ness function $f_{v,p}$ from the theorem of the highest weight of complex Lie groups such that
+  \begin{equation*}
+    \nabla f_{v,p}(g) \sto 0 ~\Leftrightarrow~ s\bc{\mu\bc{\pi(g)v}} \sto p.
+  \end{equation*}
+  There are similar properties of $f_{v,p}$ as $f_v$ such that the first order algorithm can return $g$ to solve the $p$-scaling problem.
+
+  Hirai \cite{key12} analyzed the $p$-scaling problem from another view, optimizing some function on a Hadamard manifold $P \simeq G/K$. This method mainly depends on the geometric structure of $P$, so it might be easier extended to the real case.
+
+  \section{Contributions}
+
+  This thesis generalizes the complex case to the real case. Let $G \subset GL(n,\R)$ be a zero set of finitely many polynomials defined on $GL(n,\R)$ and satisfy that $g \in G$ implies $g^T \in G$. Such $G$ is called a real reductive Lie group. 
+
+  Let $K = G \cap O(n)$ and $P = G \cap P(n)$ with Lie algebra $\alg{k}$ and $\alg{p}$, where $O(n)$ is the orthogonal group and $P(n)$ is the set of all positive definite matrices. There is also the Cartan decomposition of $G$ \cite{key5}, 
+  \begin{equation*}
+    \alg{g} = \alg{k} + \alg{p}.
+  \end{equation*}
+  Because of the homomorphism of $\alg{p} \sto P$ defined by $X \mapsto e^X$, $G/K \simeq P$, $P$ has a standard Riemannian structure such that it becomes a Riemannian manifold, in fact, a Hadamard manifold \cite{key24}.
+
+  Also, given any rational representation $(\pi,V)$ of $G$, where $V$ is a finite-dimensional real vector space\footnote{In general, $\mathbf{V}$ is complex, but we take the $\R$-rational points $V=\mathbf{V}(\R)$}, there is an inner product on $V$ such that $\pi(g)^T = \pi(g^T)$ \cite{key16}. Then for any nonzero $v$, we define the Kempf-Ness function $f_v \colon G \sto \R\cup \bb{\infty}$ by
+  \begin{equation*}
+    f_v(g) \defeq \log \norm{\pi(g)v}^2 = \log \inn{v,\pi(g^Tg)v}.
+  \end{equation*}
+  Since $g^Tg \in P$, $f_v$ can be defined on $P$ by
+  \begin{equation*}
+    f_v(x) = \log \inn{v,\pi(x)v},~\forall~x \in P.
+  \end{equation*}
+  This $f_v$ has some good properties, for example, it is geodesically convex on $P$.
+
+  There is also a real moment map \cite{key25} $\mu \colon V\backslash \bb{0} \sto \alg{p}$ and $\mu(v)$ is defined as the gradient of this $f_v$ at $I$, $\mu(v) = \nabla f_v(I)$. More generally, 
+  \begin{equation*}
+    \mu(\pi(g)v) = (g^T)^{-1}\nabla f(g^Tg) g^{-1},~\forall~g \in G.
+  \end{equation*}
+
+  For a rational representation of a real reductive Lie group, there is also a real case for Kempf-Ness theorem by \cite{key5},
+  \begin{equation*}
+    0 \notin \clo{\pi(G)v} ~\Leftrightarrow~ 0 \in \mu\bc{\clo{\pi(G)v}}.
+  \end{equation*}
+  Let $f_{v,\inf} \defeq \inf_{x \in P}f_v(x)$. The above theorem implies that
+  \begin{equation*}
+    f_{v,\inf} > -\infty ~\Leftrightarrow~ 0 \in \clo{\nabla f_v(P)}.
+  \end{equation*}
+  Then the scaling problem and the norm minimization problem are transformed to an optimization problems on $P$: let $v \in V$ such that $f_{v,\inf} > -\infty$, then find $x_s$ and $x_n$ such that
+  \begin{itemize}
+    \item $\norm{\nabla f_v(x_s)}_{x_s} < \varepsilon$: scaling problem.
+    \item $f_v(x_n) - f_{v,\inf} < \varepsilon$: norm minimization problem.
+  \end{itemize}
+
+  Optimizing $f_v$ on $P$ has a classical method, the Riemannian gradient descent algorithm \cite{key7}, similar as the first order algorithm in \cite{key8}. In order to apply the RGD algorithm to $f_v$, $f_v$ needs to satisfy some smoothness condition. Similar as the complex case, the weight norm $N(\pi)$ can also be defined and inequality (\ref{in:1}) are able to be extended to the real case, which guarantees the smoothness of $f_v$. Therefore, applying the RGD method to $f_v$ can solve the scaling problem.
+
+  In order to deal with the norm minimization problem, it also needs to strengthen the Kempf-Ness theorem. Extending inequality (\ref{in:2}), it can get
+  \begin{equation*}
+    \log\bc{1-\frac{\norm{\nabla f_v(x)}_{x}}{\gamma(\pi)}} \leqslant f_{v,\inf}- f_v(x) \leqslant \log\bc{1-\frac{\norm{\nabla f_v(x)}_{x}^2}{4N(\pi)^2}}.
+  \end{equation*}
+  Hence, to solve the minimization problem, it is sufficient to get a $x$ such that $\norm{\nabla f_v(x)}_{x}$ is small. 
+
+  For the real case, the set $\Delta(v)$ has the same definition and it is also a convex polytope in some Euclidean space \cite{key10,key11}. Therefore, we can also consider the $p$-scaling problem. But the highest weight theory might be not applicable, so we cannot get the same construction as in \cite{key8}. However, \cite{key12} provided another method.
+
+  For any $p \in \Delta(v)$, there is a function $b_p$ defined on $P$, called the Busemann function. Then considering the function $f_v + b_p$, it has some good properties; see in \cite{key12}:
+  \begin{itemize}
+    \item If $p \in \Delta(v)$, then $\inf_{x \in P}f_v(x)+b_p(x) > -\infty$.
+    \item $\inf_{x \in P}f_v(x)+b_p(x) > -\infty$ if and only if
+    \begin{equation*}
+      \exists~\bb{x_i} \subset P \text{ s.t. }\lim_{i \sto \infty}\norm{\nabla \bc{f_v+b_p}(x_i)}_{x_i} = 0.
+    \end{equation*}
+    \item For any $p \in \Delta(v)$,
+      \vspace{-0.5em} 
+      \begin{equation*}
+        \norm{\nabla(f_v+b_p)(x)}_{x} = \norm{\mu(\pi(x^{\frac{1}{2}})v)-kpk^T}_{F},
+      \end{equation*}
+      where $x^{\frac{1}{2}} = bk$ for upper triangular matrix $b$ and orthogonal matrix $k$.
+  \end{itemize}
+  Combining these results, we can see that solving the $p$-scaling problem is equivalent to optimizing the function $f_v+b_p$ on $P$. For example, if it can prove the smoothness condition of $b_p$, the RGD algorithm is applicable.
+
+  Therefore, the main contributions of this thesis are:
+  \begin{itemize}
+    \item Transforming the scaling problem and norm minimization problem to optimizing the Kempf-Ness function on the Hadamard manifold $P$ and the optimization problem on Hadamard manifolds is an interesting type of non-convex optimization problem.
+    \item Extending the results in \cite{key8} for the complex case to the real case that is more general because of without considering the complex structure and the $P$ over real field has more classical structures; see in \cite{key26}.
+    \item Applying the Riemannian gradient descent algorithm to the Kempf-Ness function to solve the scaling problem by the smoothness condition and to solve the norm  minimization problem by the strengthened Kempf-Ness theorem. Moreover, we can also obtain the convexity property of the Kempf-Ness function.
+    \item Analyzing the $p$-scaling problem for the real case and employing the results in \cite{key12} to consider this problem as another optimization problem on $P$.
+  \end{itemize}
+
+  \section{Organization}
+
+  The remainder of this thesis is organized as follows:
+  \begin{itemize}
+    \item In chapter $2$, we give some basic preliminaries related to these problems;
+    \item In chapter $3$, we introduce how to consider the scaling problem and the norm minimization problem as optimization problems on the Riemannian manifold $P$. Then we see how the RGD algorithim is valid for these cases;
+    \item In chapter $4$, we analyze the $p$-scaling problem;
+    \item We conclude this thesis in chapter $5$.
+  \end{itemize}
+
+
+
+  \chapter{Preliminaries}
+
+  \section{Real Reductive Lie groups}
+
+  Let $GL(n,\R)$ be the set of all $n \times n$ invertible real matrices with the Frobenius norm
+  \begin{equation*}
+    \norm{A}_{\Fr} \defeq \sqrt{\tr(A^TA)}.
+  \end{equation*}
+  This norm induces a standard topology defined on $GL(n,\R)$, that is,
+  \begin{equation*}
+    \lim_{k \sto \infty} (a_{ij}^{(k)}) = (a_{ij}) ~\Leftrightarrow~ \lim_{k \sto \infty} a_{ij}^{(k)} = a_{ij},~\forall~i,j.
+  \end{equation*}
+  \begin{defn}
+    $G \subset GL(n,\R)$ is called a Lie group if $G$ is a subgroup and $G$ is closed in $GL(n,\R)$ with respect to the above topology.
+  \end{defn}
+  For example, the orthogonal group $O(n) = \bb{g \in GL(n,\R) \colon g^Tg  = I}$ and $ST(n)$ defined in chapter $1$ are Lie groups.
+
+  For any $X \in M_n(\R)$, the exponential of $X$ is defined as
+  \begin{equation*}
+    e^X \defeq \sum_{k=0}^{\infty} \frac{1}{k!} X^k.
+  \end{equation*}
+  It's well-defined. Then for any Lie group $G \subset GL(n,\R)$, define the set
+  \begin{equation*}
+    \alg{g} \defeq \bb{X \in M_n(\R) \colon e^{tX} \in G,~\forall~t \in \R},
+  \end{equation*}
+  which is called the corresponding Lie algebra of $G$. For example, the corresponding Lie algebras of $O(n)$ is
+  \begin{equation*}
+    \alg{o}_n = \bb{X \in M_n(\R) \colon X^T = -X}.
+  \end{equation*}
+  For any Lie algebra $\alg{g}$, there is an operation on it, called the Lie bracket
+  \begin{equation*}
+    [X,Y] \defeq XY-YX,~\forall~X,Y \in \alg{g}.
+  \end{equation*}
+  In fact, this operation provides the "algebra" structure on $\alg{g}$, which is a real vector space.
+
+  \begin{defn}
+    Let $G \subset GL(n,\R)$ be a subgroup and there are finitely many polynomials $f_1,\cdots,f_l$ defined on $GL(n,\R) = \R^{n^2}$ such that
+    \begin{equation*}
+      G = \bb{g \in GL(n,\R) \colon f_i(g) = 0,~\forall~i=1,\cdots,l},
+    \end{equation*} 
+    which means $G$ is a Lie group. If $g \in G$ implies that $g^T \in G$, then $G$ is called a real reductive Lie group.  
+  \end{defn}
+
+  \begin{exam}
+    \begin{enumerate}
+      \item $GL(n,\R)$, $O(n)$, $SL(n,\R)$, $SO(n,\R)$ are real reductive Lie groups.
+      \item $GL(n,\C)$, $U(n)$, $SL(n,\C)$, $SU(n,\C)$ are also reductive Lie groups in $GL(2n,\R)$ by
+      \begin{equation*}
+        A+iB ~\mapsto~ \bc{
+          \begin{array}{cc}
+            A & -B \\
+            B & A
+          \end{array}
+        }.
+      \end{equation*}
+      In fact, they are also complex real reductive Lie groups. Therefore, the concept of real reductive Lie group generalized the concept of complex reductive Lie groups.
+    \end{enumerate}
+  \end{exam}
+
+  For any complex matrix $A$, it can be written as $A = u e^{H}$ for $u \in U(n)$ and $H = H^{\dagger}$, called the polar decomposition \cite{key27}, and this decomposition can be extended to any complex reductive Lie group. For a real reductive Lie group $G \subset GL(n,\C)$, there is a similar decomposition:
+  \begin{equation*}
+    \begin{split}
+      K \defeq G \cap O(n),~&\text{with Lie algebra } \alg{k} = \bb{X \in \alg{g} \colon X^T=-X}, \\
+      P \defeq G \cap P(n),~&\text{with Lie algebra } \alg{p} = \bb{X \in \alg{g} \colon X^T=X},
+    \end{split}
+  \end{equation*}
+  where $P(n)$ denotes the set of all positive definite matrices in $M_n(\R)$.
+  \begin{thm}[\cite{key5}]
+    Let $G$, $K$ and $\alg{p}$ as mentioned above. Then the map
+    \begin{center}
+      \begin{tabular}{c c l}
+        $K \times \alg{p}$ & $\longrightarrow$ & $G$ \\
+         $(k,X)$ & $\longmapsto$ & $ke^X$
+      \end{tabular}
+    \end{center}
+    is a homeomorphism.
+  \end{thm}
+  Because $X \mapsto e^X$ is a homeomorphism from $\alg{p}$ to $P$, the quotient group $G/K \simeq P$ and 
+  \begin{equation*}
+     \alg{g} = \alg{k} + \alg{p},
+  \end{equation*}
+  which is called the Cartan decomposition of $G$.
+  \begin{rem}
+    For a complex reductive algebraic group $G \subset GL(n)$ with $K = G \cap U(n)$, then it also has above decomposition $\alg{g} = \alg{k} + \alg{p}$ by setting $\alg{p} = i\alg{k}$.
+  \end{rem}
+
+  Let $\alg{a} \subset \alg{p}$ be a maximal commutative subalgebra which means 
+  \begin{enumerate}[label = (\arabic*)]
+    \item $\alg{a}$ is a linear subspace in $\alg{p}$;
+    \item for any $X,Y\in \alg{a}$, $[X,Y] = 0$;
+    \item no such $\alg{a}^{\prime}$ satisfies $(1)$ and $(2)$ and contains $\alg{a}$ properly.
+  \end{enumerate}
+  For such $\alg{a}$, let $T = \bb{e^{X} \colon X \in \alg{a}}$, then \cite{key5}
+  \begin{equation*}\label{eq:3}
+    G = \bb{k^{\prime}tk \colon k^{\prime},k \in K,~t \in T}.
+  \end{equation*}
+
+  \begin{defn}
+    Let $G \subset GL(n,\R)$ be a real reductive Lie group. If theres is an $m$-dimensional real vector space $V$ and a group homomorphism
+    \begin{center}
+      \begin{tabular}{l c c l}
+        $\pi \colon$ & $G$ & $\longrightarrow$ & $GL(V) \simeq M_m(\R)$ \\
+        ~& $g$ & $\longmapsto$ & $\pi(g) = (\pi(g)_{ij})$
+      \end{tabular}
+    \end{center}
+    such that each entry $\pi(g)_{ij}$ is a polynomial in $g$ and $\det g^{-1}$ when viewing $\pi(g)$ as a matrix, then $(\pi,V)$ is called a rational representation of $G$.
+  \end{defn}
+
+  Considering the Cartan decomposition $\alg{g} = \alg{k} + \alg{p}$ of $G$ with a rational representation $(\pi,V)$, there is an inner product $\inn{\cdot,\cdot}$ defined on $V$ such that \cite{key16}
+  \begin{itemize}
+    \item $\inn{\pi(k)v,\pi(k)w} = \inn{v,w}$ for any $k \in K$ and $v,w \in V$, i.e., $K$-invariant;
+    \item $\inn{\pi(p)v,w} = \inn{v,\pi(p)w}$ for any $p \in P$ and $v,w \in V$, i.e., $\pi(p)$ symmetric.
+  \end{itemize}
+  which means $\inn{\pi(g)v,w} = \inn{v,\pi(g^T)w}$, i.e., $\pi(g)^T = \pi(g^T)$, for any $g \in G$. This inner product is called corresponding to the Cartan decomposition.
+
+  For any rational representation $(\pi,V)$ of $G$, there is a map
+  \begin{center}
+    \begin{tabular}{l c c l}
+      $\Pi \colon$ & $\alg{g}$ & $\longrightarrow$ & $\alg{gl}(V)$
+    \end{tabular}
+  \end{center}
+  defined as
+  \begin{equation*}
+    \Pi(X) \defeq \lv{\frac{d}{dt}}_{t=0}\pi(e^{tX}).
+  \end{equation*}
+  This $(\Pi,V)$ is called the representation of Lie algebra $\alg{g}$ corresponding to $(\pi,V)$. By definition, $\Pi$ is a linear map and satisfies
+  \begin{equation*}
+    \Pi([X,Y]) = \bj{\Pi(X),\Pi(Y)},~\pi(e^X) = e^{\Pi(X)},~\forall~X,Y \in \alg{g},
+  \end{equation*}
+  and for any $k \in K$ and $X \in \alg{g}$,
+  \begin{equation}\label{eq:4}
+    \begin{split}
+      \pi(k^T)\Pi(X)\pi(k) &= \lv{\frac{d}{dt}}_{t=0}\pi(k^Te^{tX}k) \\
+      &= \lv{\frac{d}{dt}}_{t=0}\pi(e^{tk^TXk}) \\
+      &= \Pi(k^TXk).
+    \end{split}
+  \end{equation}
+
+  \section{Riemannian Structure on \texorpdfstring{$P$}{P}}
+
+  Let $G$ be a real reductive Lie group with the Cartan decomposition $\alg{g} = \alg{k}+\alg{p}$. Then
+  \begin{equation*}
+    G/K \simeq P \subset GL(n,\R),
+  \end{equation*}
+  so $P$ is a smooth submanifold. For any positive definite matrix $x$, let $x^{\frac{1}{2}}$ denote the unique positive definite matrix such that its square is $x$. Moreover, $x^{\frac{1}{2}} \in P$ if $x \in P$ \cite{key5}. Then given any $x \in P$, the tangent space of $P$ at $x$ is
+  \begin{equation*}
+    T_xP \defeq \bb{x^{\frac{1}{2}}Xx^{\frac{1}{2}} \colon X \in \alg{p}},
+  \end{equation*}
+  which clearly is a real vector space. In particular, $T_IP = \alg{p}$.
+
+  Now let $P$ be equipped with a classical Riemannian structure. Firstly, define an inner product on $\alg{p}$ as
+  \begin{equation*}
+    \inn{X,Y}_{\alg{p}} \defeq \tr \bc{XY},~\forall~ X,Y \in \alg{p},
+  \end{equation*}
+  which, in fact, induces the Frobenius norm $\norm{\cdot}_{\Fr}$ on $\alg{p}$, also denoted by $\norm{\cdot}_{\alg{p}}$. Then for any $x \in P$, we define the inner product $\inn{\cdot,\cdot}_x$ on $T_xP$ as
+  \begin{equation*}
+    \inn{H_1,H_2}_x \defeq \tr\bc{x^{-1}H_1x^{-1}H_2},~\forall~ H_1,H_2 \in T_xP,
+  \end{equation*}
+  because if $H_1 = x^{\frac{1}{2}}X_1x^{\frac{1}{2}}$ and $H_2 = x^{\frac{1}{2}}X_2x^{\frac{1}{2}}$ for $X_1,X_2 \in \alg{p}$, then $\inn{H_1,H_2}_x = \inn{X_1,X_2}_{\alg{p}}$. 
+
+  Then $P$ with these structures is a Riemannian manifold. And any geodesic starting at $x \in P$ with the direction $H \in T_xP$ is 
+  \begin{equation*}
+    \gamma_H(t) = x^{\frac{1}{2}} e^{tx^{-\frac{1}{2}}Hx^{-\frac{1}{2}}} x^{\frac{1}{2}}.
+  \end{equation*}
+  Thus, any geodesic on $P$ has the form $\gamma_X(t) = x^{\frac{1}{2}}e^{tX}x^{\frac{1}{2}}$ for some $X \in \alg{p}$. Moreover, any two points $p,q$ $P$ can be connected by a unique geodesic $\gamma_{pq}$ because $P$ is a  manifold with nonpositive curvature. Therefore, ee define the geodesic distance $d(p,q)$ between $p$ and  $q$ as the length of $\gamma_{pq}$.
+
+  Let $f \colon P \sto \R$ be a smooth function, which means that $f$ has derivatives of all orders with respect to all coordinates on $P$. For any $x \in P$, the gradient of $f$ at $x$ is an element $\nabla f(x) \in T_xP$ defined as
+  \begin{equation*}
+    \inn{\nabla f(x), H}_x = \lv{\frac{d}{dt}}_{t=0} f\bc{x^{\frac{1}{2}} e^{tx^{-\frac{1}{2}}Hx^{-\frac{1}{2}}} x^{\frac{1}{2}}}.
+  \end{equation*}
+
+  \section{Kempf-Ness Theorem}
+
+  Let $(\pi,V)$ be a rational representation of a real reductive Lie group $G$ with the Cartan decomposition $\alg{g} = \alg{k}+\alg{p}$. Let $V$ be with the inner product $\inn{\cdot,\cdot}$ satisfying above conditions.
+
+  For any $v \in V \backslash \bb{0}$, the Kempf-Ness function $f_v$ corresponding to $v$ is defined as
+  \begin{center}
+    \begin{tabular}{l c c l}
+      $f_v \colon$ & $P$ & $\longrightarrow$ & $\R \cup \bb{\infty}$ \\
+      ~& $x$ & $\longmapsto$ & $\log \inn{v,\pi(x)v}$
+    \end{tabular}
+  \end{center}
+  Considering the gradient of $f_v$,
+  \begin{equation*}
+    \begin{split}
+      \inn{\nabla f_v(x),x^{\frac{1}{2}}Xx^{\frac{1}{2}}}_x &= \lv{\frac{d}{dt}}_{t=0}f_v\bc{x^{\frac{1}{2}}e^{tX}x^{\frac{1}{2}}} \\
+      &= \frac{\inn{\pi(x^{\frac{1}{2}})v,\Pi(X)\pi(x^{\frac{1}{2}})v}}{\inn{v,\pi(x)v}}.
+    \end{split}
+  \end{equation*}
+
+  Let the map $\mu \colon V\backslash \bb{0} \sto \alg{p}$ be defined as
+  \begin{equation*}
+    \mu(v) \defeq \nabla f_v(I) ~\Rightarrow~ \inn{\mu(v),X}_{\alg{p}} = \frac{\inn{v,\Pi(X)v}}{\inn{v,v}}.
+  \end{equation*}
+  Such $\mu$ is called the moment map corresponding to the action. There is a property that may be used in the following. For any $k \in K$, since the inner product $\inn{\cdot,\cdot}$ on $V$ is $K$-invariant,
+  \begin{equation*}
+    \begin{split}
+      \inn{\mu(\pi(k)v),X}_{\alg{p}} &= \frac{\inn{v,\pi(k^T)\Pi(X)\pi(k)v}}{\inn{v,v}} \\
+      &= \frac{\inn{v,\Pi(k^TXk)v}}{\inn{v,v}} \\
+      &= \inn{\mu(v),k^TXk}_{\alg{p}} \\
+      &= \inn{k\mu(v)k^T,X}_{\alg{p}},
+    \end{split}
+  \end{equation*}
+  where the second equality is by (\ref{eq:4}). So it can see
+  \begin{equation}\label{eq:5}
+    \mu(\pi(k)v) = k\mu(v)k^T,~\forall~k \in K.
+  \end{equation}
+
+  Let's see the Kempf-Ness theorem for the real case \cite[Theorem 2.23]{key5}. $v \in V$ is called critical if $\inn{v, \Pi(X)v} = 0$ for all $X \in \alg{p}$.
+  \begin{thm}
+    Let $G,K$ be as above and $v \in V$.
+    \begin{enumerate}[label = (\arabic*)]
+      \item $\inn{v, \Pi(X)v} = 0$ for all $X \in \alg{p}$ if and only if $\norm{\pi(g)v} \geqslant \norm{v}$ for any $g \in G$.
+      \item If $\pi(G)v$ is closed, then there is a critical element in $\pi(G)v$ 
+    \end{enumerate}
+  \end{thm}
+
+  \begin{cor}
+    $0 \notin \clo{\pi(G)v}$ if and only if $\mu(w) = 0$ for some $w \in \clo{\pi(G)v}$.
+  \end{cor}
+  \begin{proof}
+    $\Leftarrow$: $\mu(w) = 0$ means nonzero $w$ is critical. So by the above theorem,
+    \begin{equation*}
+      \norm{\pi(g)w} \geqslant \norm{w},~\forall~g \in G.
+    \end{equation*}
+    Suppose $0 \notin \clo{\pi(G)v}$. There is a sequence $\bb{g_n} \subset G$ such that 
+    \begin{equation*}
+      \lim_{n \sto \infty} \pi(g_n)v = 0.
+    \end{equation*}
+    Since $w \in \clo{\pi(G)v}$, there is $\bb{g^{\prime}_m}$ such that
+    \begin{equation*}
+      \lim_{m \sto \infty} \pi(g^{\prime}_m)w = v.
+    \end{equation*}
+    Therefore,
+    \begin{equation*}
+      \lim_{n,m \sto \infty} \pi(g_ng^{\prime}_m)w = 0, 
+    \end{equation*}
+    which is contradicted to $\norm{\pi(g_ng^{\prime}_m)w} \geqslant \norm{w} > 0$\vspace{1em} \\
+    $\Rightarrow$: By a theorem of Chevalley, $\clo{\pi(G)v}$ contains a unique closed orbit $\pi(G)u$. Since $0$ is not in $\clo{\pi(G)v}$, any element in $\pi(G)u$ is nonzero. By above theorem, there is a $w \in \pi(G)u$ that is critial. So $\mu(w) = 0$.
+  \end{proof}
+
+  \chapter{Optimization on \texorpdfstring{$P$}{P}}
+
+  In this chapter, fix a real reductive Lie group $G$ and a rational representation $(\pi,V)$ of $G$. Let $\alg{g} = \alg{k}+\alg{p}$ be the Cartan decomposition of $G$ with $K$ and $P$ as above. Let $V$ be equipped with an inner product $\inn{\cdot,\cdot}$ corresponding to this Cartan decomposition.
+
+  \section{Scaling and Norm Minimization}
+
+  Firstly, we want to transform the scaling problem and norm minimization problem to be a optimization problem on $P$. 
+
+  For a nonzero $v \in V$, let $f_v(x) = \log\inn{v,\pi(x)v}$ be th Kempf-Ness function. 
+  \begin{itemize}
+    \item For any $g \in G$, since $\pi(g)^T = \pi(g^T)$, for $x = g^Tg \in P$,
+    \begin{equation*}
+      \log\norm{\pi(g)v}^2 = \log \inn{v,\pi(x)v} = f_v(x). 
+    \end{equation*}
+    \item Since $x \in P$ implies $x^{\frac{1}{2}} \in P$, $f_v(x) = \log \norm{\pi(x^{\frac{1}{2}})v}^2$.
+  \end{itemize}
+  These imply that
+  \begin{equation*}
+    0 \notin \clo{\pi(G)v} ~\Leftrightarrow~ f_{v,\inf} \defeq \inf_{x \in P} f_v(x) > -\infty.
+  \end{equation*}
+
+  The norm minimization problem becomes to find a $x_n \in P$ for a $\varepsilon > 0$ such that
+  \begin{equation*}
+    f_v(x_n) - f_{v,\inf} < \varepsilon,
+  \end{equation*}
+  when $0 \notin \clo{\pi(G)v}$.
+
+  For the scaling problem, it also has an equivalent relationship between the moment map and the gradient.
+  \begin{lem}
+    For any $g \in G$,
+    \begin{equation*}
+      \mu(\pi(g)v)  = (g^T)^{-1} \nabla f_v(g^Tg) g^{-1}.
+    \end{equation*}
+  \end{lem}
+  \begin{proof}
+    Let $g = ke^Y$ for $k \in K$ and $Y \in \alg{p}$ and $x = g^Tg = e^{2Y}$. Then for any $X \in \alg{p}$,
+    \begin{equation*}
+      \begin{split}
+        \tr\bc{\mu(\pi(g)v)X} &=  \frac{\inn{\pi(g)v,\Pi(X)\pi(g)v}}{\inn{\pi(g)v,\pi(g)v}} \\
+         &=  \frac{\inn{\pi(e^{Y})v,\pi(k^T)\Pi(X)\pi(k)\pi(e^{Y})v}}{\inn{v,\pi(x)v}} \\
+         &= \frac{\inn{\pi(x^{\frac{1}{2}})v,\Pi(k^TXk)\pi(x^{\frac{1}{2}})v}}{\inn{v,\pi(x)v}} \\
+         &= \inn{\nabla f_v(x),x^{\frac{1}{2}}k^TXkx^{\frac{1}{2}}}_x \\
+         &= \tr\bc{x^{-\frac{1}{2}}\nabla f_v(x)x^{-\frac{1}{2}}k^TXk}.
+      \end{split}
+    \end{equation*}
+    Therefore,
+    \begin{equation*}
+      \mu(\pi(g)v) = kx^{-\frac{1}{2}}\nabla f_v(x)x^{-\frac{1}{2}}k^T = (g^T)^{-1} \nabla f_v(g^Tg) g^{-1}.
+    \end{equation*}
+  \end{proof}
+  \begin{cor}
+    For any $g \in G$, $\norm{\mu(\pi(g)v)}_{\Fr} = \norm{\nabla f_v(g^Tg)}_{x}$, where $x = g^Tg$ and $\norm{\cdot}_x$ is the norm induced by $\inn{\cdot,\cdot}_x$ on $T_xP$.
+  \end{cor}
+  \begin{proof}
+    By above lemma,
+    \begin{equation*}
+      \begin{split}
+        \norm{\mu(\pi(g)v)}_{\Fr}^2 &=\tr\bc{\mu(\pi(g)v)\mu(\pi(g)v)} \\
+        &= \tr\bc{(g^Tg)^{-1} \nabla f_v(g^Tg) (g^Tg)^{-1} \nabla f_v(g^Tg)} \\
+        &=  \norm{\nabla f_v(g^Tg)}_{x}^2.
+      \end{split}
+    \end{equation*}
+  \end{proof}
+  By above, 
+  \begin{itemize}
+    \item for any $g\in G$, $\norm{\mu(\pi(g)v)}_{\Fr} = \norm{\nabla f_v(g^Tg)}_{x}$ for $x=g^Tg$.
+    \item for any $x \in P$, $\norm{\nabla f_v(x)}_{x} = \norm{\mu(\pi(x^{\frac{1}{2}})v)}_{\Fr}$.
+  \end{itemize}
+  And the Kempf-Ness theorem implies that
+  \begin{equation*}
+    f_{v,\inf} > -\infty~\Leftrightarrow~ 0 \in \clo{\nabla f_v(P)}.
+  \end{equation*}
+  Therefore, the scaling problem becomes to find $x_s \in P$ for any $\varepsilon > 0$ such that
+  \begin{equation*}
+    \norm{\nabla{f_v(x_s)}}_{x_s} < \varepsilon.
+  \end{equation*}
+
+  In conclusion, the scaling problem and the norm minimization problem are equivalent to optimizing the Kempf-Ness function: for $v \in V$ with $f_{v,\inf} > -\infty$ and $\varepsilon >0$,
+  \begin{itemize}
+    \item \textbf{Norm Minimization Problem:} find $x_n$ such that $f_v(x_n) - f_{v,\inf} < \varepsilon$;
+    \item \textbf{Scaling Problem:} find $x_s$ such that $\norm{\nabla{f_v(x_s)}}_{x_s} < \varepsilon$.
+  \end{itemize}
+
+  \section{Riemannian Gradient Descent}
+
+  For $f \colon \R^n \sto \R$ sufficiently smooth, there is a classical method to optimize $f$, called the gradient descent algorithm by setting $x_0$ and updating $x_1,x_2,\cdots$ as
+  \begin{equation*}
+    x_{t+1} = x_t - \alpha_t \nabla f(x_t),
+  \end{equation*}
+  where $\alpha_t$ are chosen step-sizes. If the $f$ and $\alpha_t$ satisfy some conditions, then the accumulation point of the generated sequence $\bb{x_t}$ is a local minimum of $f$, see in \cite{key28}. This algorithm can be extended to optimization problems on any Riemannian manifold \cite[Chapter 4]{key7}. In particular, let's consider it on the Riemannian manifold $P$.
+
+  Let $f \colon P \sto \R$ be a smooth function and consider the optimization problem
+  \begin{equation*}
+    \inf_{x \in P} f(x).
+  \end{equation*}
+  The gradient descent algorithm for this problem is the following.
+  \begin{center}
+    \begin{algorithm}[H]
+      \SetAlgoNoLine
+      \caption{Riemannian Gradient Descent}
+      \Input{Target funtion: $f \colon P \sto \R$; \newline
+          Step size: $\eta$; \newline
+          Number of iterations: $T$}
+      \Output{$x_s \in P$}
+      $x_0 = I$ \\
+      \For{$t = 1$ \KwTo $T$}{
+        $x_{t+1} = x_t^{\frac{1}{2}}e^{-\eta x_t^{-\frac{1}{2}}\nabla f(x_t) x_t^{-\frac{1}{2}}}x_t^{\frac{1}{2}}$
+      }
+      $x_s = \argmin \bb{x_t \colon \norm{\nabla f(x_t)}_{x_t}}$ \\
+      \Return{$x_s$}
+    \end{algorithm}
+  \end{center}
+  We chose the step-size $\eta$ as a constant that is independent of steps. In fact, the update of $x_{t+1}$ is
+  \begin{equation*}
+    x_{t+1} =  \gamma_{t}(\eta)
+  \end{equation*}
+  where $\gamma_{t}$ is the geodesic starting at $x_t$ with the direction $-\nabla f(x_t)$. And the RGD algorithm is valid if $f$ satisfies some conditions.
+
+  \begin{thm}[{\cite[Corollary 4.9]{key7}}]\label{thm:1}
+    If $f_{\inf} \defeq \inf_x f(x) > -\infty$ and there is $L>0$ such that for any $x \in P$,
+    \begin{equation} \label{in:3}
+      f(\gamma_H(1)) \leqslant f(x) + \inn{\nabla f(x),H}_x + \frac{L}{2}\norm{H}_x^2~\forall~H \in T_xP, 
+    \end{equation}
+    where $\gamma_H(t)$ is the geodesic starting from $x$ with the direction $H$, then for any $\varepsilon > 0$ by setting $\eta = \frac{1}{L}$ and
+    \begin{equation*}
+      T > \frac{2L}{\varepsilon^2}\bc{f(I)-f_{\inf}},
+    \end{equation*}
+    it can get
+    \begin{equation*}
+      \norm{\nabla f(x_s)}_{x_s} < \varepsilon.
+    \end{equation*}
+  \end{thm}
+
+  \section{Smoothness and Convexity of \texorpdfstring{$f_v$}{fv}}
+
+  By Theorem \ref{thm:1}, if we want to apply the RGD algorithm to $f_v$ to solve the scaling problem, $f_v$ should satisfy
+  \begin{equation*}
+    f_v(\gamma_H(1)) \leqslant f_v(x) + \inn{\nabla f_v(x),H}_x + \frac{L}{2}\norm{H}_x^2~\forall~H \in T_xP, 
+  \end{equation*}
+  for any $x \in P$. In fact, this condition can be simplified.
+
+  \begin{defn}
+    $f \colon P \sto \R$ is called $L$-smooth if for any $x \in P$,
+      \begin{equation*}
+        \abs{\frac{d^2}{dt^2}f\bc{x^{\frac{1}{2}}e^{tX}x^{\frac{1}{2}}}} \leqslant L\norm{X}_{\alg{p}}^2,~\forall~X \in \alg{p}.
+      \end{equation*}
+  \end{defn}
+
+  \begin{prop}
+    If $f \colon P \sto \R$ is $L$-smooth, then $f$ satisfies condition \ref{in:3}.
+  \end{prop}
+  \begin{proof}
+    Let $x \in P$. Then for any $H \in T_xP$, $H = x^{\frac{1}{2}}Xx^{\frac{1}{2}}$ for some $X \in \alg{p}$ and $\norm{H}_x = \norm{X}_{\alg{p}}$ and the geodesic starting at $x$ with the direction $H$ is
+    \begin{equation*}
+      \gamma_H(t) = x^{\frac{1}{2}}e^{tX}x^{\frac{1}{2}}.
+    \end{equation*}
+    Let $g(t) = f(\gamma_H(t))$. By then Taylor expansion of $g$,
+    \begin{equation*}
+      g(1) = g(0) + g^{\prime}(0) +\frac{1}{2}g^{\prime\prime}(\xi),~\xi \in [0,1].
+    \end{equation*}
+    Since $f$ is $L$-smooth,
+    \begin{equation*}
+      \abs{\frac{1}{2}g^{\prime\prime}(\xi)} \leqslant \frac{L}{2}\norm{H}_{x}^2.
+    \end{equation*}
+    And
+    \begin{equation*}
+       g^{\prime}(0) =  \inn{\nabla f(x),H}_x.
+    \end{equation*}
+    Therefore, the Taylor expansion of $g$ implies that $f$ satisfies the condition \ref{in:3}.
+  \end{proof}
+
+  By above proposition, we need to find an appropriate constant $L>0$ such that the Kempf-Ness function $f_v$ is $L$-smooth. For the complex case, \cite{key8} defined a parameter, called weight norm, which can also be extended to the real case.
+
+  \begin{defn}
+    For the rational representation $(\pi,V)$ of $G$, the weight norm of $\pi$ is
+    \begin{equation*}
+      N(\pi) \defeq \max\bb{\frac{\norm{\Pi(X)}_{\op}}{\norm{X}_{\alg{p}}} \colon X \in \alg{p}} = \max\bb{\norm{\Pi(X)}_{\op} \colon X \in \alg{p},~\norm{X}_{\alg{p}}=1}.
+    \end{equation*}
+  \end{defn}
+  \begin{rem}
+    \begin{enumerate}[label=(\arabic*)]
+      \item The norm $\norm{\cdot}_{\op}$ is denoted the operator norm of a given matrix, that is
+      \begin{equation*}
+        \norm{A}_{\op} \defeq \max_{\norm{v}=1} \norm{Av}
+      \end{equation*}
+      \item $N(\pi)$ always exists since $\bb{X \in \alg{p} \colon \norm{x}_{\alg{p}}=1}$ is a compact set and $\norm{\Pi(\cdot)}_{\op}$ is continuous on $\alg{p}$.
+    \end{enumerate}
+  \end{rem}
+
+  \begin{thm}\label{thm:2}
+    The Kempf-Ness function $f_v$ is $N(\pi)^2$-smooth on $P$.
+  \end{thm}
+  \begin{proof}
+    Given $x\in P$ and $X \in \alg{p}$, let
+    \begin{equation*}
+      \begin{split}
+        g(t) &= f_v\bc{x^{\frac{1}{2}}e^{tX}x^{\frac{1}{2}}} \\
+        &= \log \inn{v, \pi\bc{x^{\frac{1}{2}}e^{tX}x^{\frac{1}{2}}}v} \\
+        &= \log \inn{\pi(x^{\frac{1}{2}})v,e^{t\Pi(X)}\pi(x^{\frac{1}{2}})v} \\
+        &= \log \inn{u,e^{t\Pi(X)}u},
+      \end{split}
+    \end{equation*}
+    where $u = \pi(x^{\frac{1}{2}})v$.
+    \begin{equation*}
+      g^{\prime}(t) = \frac{\inn{u,\Pi(X)e^{t\Pi(X)}u}}{\inn{u,e^{t\Pi(X)}u}}
+    \end{equation*}
+    and
+    \begin{equation*}
+      g^{\prime\prime}(t) = \frac{\inn{u,\Pi(X)^2e^{t\Pi(X)}u}\inn{u,e^{t\Pi(X)}u} - \inn{u,\Pi(X)e^{t\Pi(X)}u}^2}{\inn{u,e^{t\Pi(X)}u}^2}.
+    \end{equation*}
+    Since $\Pi(X)e^{t\Pi(X)} = e^{t\Pi(X)}\Pi(X)$,
+    \begin{equation*}
+      \abs{g^{\prime\prime}(t)} \leqslant \abs{\frac{\inn{u,\Pi(X)^2e^{t\Pi(X)}u}}{\inn{u,e^{t\Pi(X)}u}}} = \frac{\norm{\Pi(X)e^{\frac{t}{2}\Pi(X)}u}^2}{\norm{e^{\frac{t}{2}\Pi(X)}u}^2} \leqslant \norm{\Pi(X)}^2_{op} \leqslant N(\pi)^2 \norm{X}^2_{\alg{p}}.
+    \end{equation*}
+    Therefore, $f_v$ is $N(\pi)^2$-smooth.
+  \end{proof}
+
+  \begin{cor}
+    $f_v$ is geodesically convex on $P$.
+  \end{cor}
+  \begin{proof}
+    Considering above function $g(t) = f_v\bc{x^{\frac{1}{2}}e^{tX}x^{\frac{1}{2}}}$, let $w(t) = e^{\frac{t}{2}\Pi(X)}u$, then
+    \begin{equation*}
+      g^{\prime\prime}(t) = \frac{\norm{\Pi(X)w(t)}^2}{\norm{w(t)}^2}-\frac{\inn{w(t),\Pi(X)w(t)}^2}{\norm{w(t)}^4}.
+    \end{equation*}
+    Let $v(t)= \frac{w(t)}{\norm{w(t)}}$, then $\norm{v(t)} = 1$. By the Cauchy-Schwarz inequality,
+    \begin{equation*}
+      \begin{split}
+        g^{\prime\prime}(t) &= \norm{\Pi(X)v(t)}^2 - \inn{v(t),\Pi(X)v(t)}^2 \\
+        &\geqslant \norm{\Pi(X)v(t)}^2 - \norm{\Pi(X)v(t)}^2\norm{v(t)}^2 \\
+        &= 0.
+      \end{split} 
+    \end{equation*}
+    Therefore, $g(t)$ is convex and it is true for any geodesic $\gamma_X(t)=  x^{\frac{1}{2}}e^{tX}x^{\frac{1}{2}}$, which means $f_v$ is geodesically convex.
+  \end{proof}
+
+  Combining Theorem \ref{thm:1} with Theorem \ref{thm:2}, applying the RGD method to optimize the Kempf-Ness function is able to solve the scaling problem.
+
+  \begin{thm}[Scaling Problem]
+    If $v \in V$ such that $f_{v \inf} > -\infty$, then for any $\varepsilon>0$, by setting
+    \begin{equation*}
+      \eta = \frac{1}{N(\pi)^2},~T > \frac{2N(\pi)^2}{\varepsilon^2}\bc{\log \norm{v}^2-f_{v,\inf}},
+    \end{equation*}
+    in the RGD algorithm, it returns $x_s \in P$ such that $\norm{\nabla f_v(x_s)}_{x_s} < \varepsilon$.
+  \end{thm}
+
+  \section{Strengthened Kempf-Ness Theorem}
+
+  Now we want to apply the RGD algorithm to the norm minimization problem. In order to do that, we should strengthen the Kempf-Ness theorem to get a stronger relationship between $f_{v, \inf}$ and $\nabla f_v$. \cite{key8} provided a relationship for the complex $G \subset GL(n,\C)$ but it used the complex structure. We'll extend these to the real case.
+
+  Firstly, by applying the smoothness condition of $f_v(x) = \log \inn{v,\pi(x)v}$ defined on $P$, it can get the relationship from one side. 
+
+  Let's review the definition of moment map and weight norm,
+  \begin{equation*}
+    \inn{\mu(v),X}_{\alg{p}} = \frac{\inn{v,\Pi(X)v}}{\inn{v,v}},~ N(\pi) = \max\bb{\norm{\Pi(X)}_{\op} \colon X \in \alg{p},~\norm{X}_{\alg{p}}=1}.
+  \end{equation*}
+  By the definition, 
+  \begin{equation*}
+    \norm{\mu(v)}_{\alg{p}}^2 = \inn{\mu(v),\mu(v)}_{\alg{p}} = \frac{\inn{v,\Pi(\mu(v))v}}{\inn{v,v}} \leqslant \norm{\Pi(\mu(v))}_{\op} \leqslant N(\pi)\norm{\mu(v)}_{\alg{p}},
+  \end{equation*}
+  where the first inequality is by the Cauchy-Schwarz inequality and the second is by the definition. Therefore,
+  \begin{equation*}
+    \norm{\mu(v)}_{\alg{p}} \leqslant N(\pi).
+  \end{equation*}
+
+  \begin{thm}\label{thm:3}
+    For any $v \in V \backslash \bb{0}$,
+    \begin{equation*}
+      \frac{\cp(v)^2}{\norm{v}^2} \leqslant 1 - \frac{\norm{\mu(g)}_{\alg{p}}^2}{4N(\pi)^2},
+    \end{equation*}
+    where $\cp(v) = \inf_{g \in G} \norm{\pi(g)v}$.
+  \end{thm}
+  \begin{proof}
+    Since $f_v$ is $N(\pi)^2$-smooth, it satisfies the condition \ref{in:3} at $x = I$, that is,
+    \begin{equation*}
+      f_v(e^X) - f_v(I) \leqslant \inn{\mu(v),X}_{\alg{p}} + \frac{N(\pi)^2}{2} \norm{X}_{\alg{p}}^2,~\forall~X \in \alg{p}.
+    \end{equation*}
+    In particular, let $X = -\frac{\norm{\mu(v)}_{\alg{p}}}{N(\pi)^2}$.
+    \begin{equation*}
+      \log \norm{\pi(e^{\frac{1}{2}X})v}^2 - \log \norm{v}^2  \leqslant -\frac{\norm{\mu(v)}_{\alg{p}}^2}{2N(\pi)^2}.
+    \end{equation*}
+    Since $\cp(v) \leqslant \norm{\pi(e^{\frac{1}{2}X})v}$,
+    \begin{equation*}
+      \frac{\cp(v)^2}{\norm{v}^2} \leqslant e^{-\frac{\norm{\mu(v)}_{\alg{p}}^2}{2N(\pi)^2}} \leqslant 1-\frac{\norm{\mu(v)}_{\alg{p}}^2}{4N(\pi)^2},
+    \end{equation*}
+    where the second inequality is by $ e^{-x} \leqslant 1 - \frac{1}{2}x,~\forall~ x\in [0,1]$ and $\norm{\mu(v)}_{\alg{p}} \leqslant N(\pi)$.
+  \end{proof}
+
+  Then we want to get the relationship between $\mu(v)$ and $\cp(v)$ from the other side. To do this, we also extend the relationship for the complex case in \cite{key8} to the real case. But firstly, let's do some preparations for that.
+
+  \begin{enumerate}[label = \arabic*.]
+    \item \textbf{Weight Space Decomposition} \\
+    Let $\alg{a} \subset \alg{p}$ be a maximal commutative subalgebra and $\omega \in \alg{a}$. For the given rational representation $(\pi,V)$, define
+    \begin{equation*}
+      V_{\omega} \defeq \bb{v \in V \colon \Pi(X)v = \inn{\omega,X}_{\alg{p}}v,~\forall~X \in \alg{a}}.
+    \end{equation*}
+    If $V_{\omega} \neq \bb{0}$, we call $\omega$ a weight of $(\pi,V)$ and $V_{\omega}$ the weight space corresponding to $\omega$.
+    Let
+    \begin{equation*}
+      \Omega(\pi) \defeq \bb{\omega \in \alg{a} \colon V_{\omega} \neq \bb{0}}
+    \end{equation*}
+    be the set of weights of $(\pi,V)$. Because $\bb{\Pi(X) \colon X \in \alg{a}}$ is simultaneously diagonalizable, each $V_{\omega}$ is an eigenspace. So
+    \begin{equation*}
+      V = \bigoplus_{\omega \in \Omega(\pi)}V_{\omega},
+    \end{equation*}
+    which is called the weight space decomposition. And $\dim V < \infty$ implies that $\Omega(\pi)$ has only finitely many elements.
+
+    \item \textbf{Restricted Moment Map} \\
+    Let $T = \bb{e^X \colon X \in \alg{a}}$. Then for the moment map $\mu \colon V\backslash \bb{0}  \sto \alg{p}$, we define the restricted moment map $\mu_T \colon  V\backslash \bb{0}  \sto \alg{a}$ by
+    \begin{equation*}
+      \inn{\mu_T(v),X}_{\alg{p}} = \frac{\inn{v,\Pi(X)v}}{\inn{v,v}},~\forall~X \in \alg{a}.
+    \end{equation*}
+    So it can see
+    \begin{equation*}
+      \inn{\mu_T(v),\mu_T(v)}_{\alg{p}} = \inn{\mu(v),\mu_T(v)}_{\alg{p}} \leqslant \norm{\mu(v)}_{\alg{p}}\norm{\mu_T(v)}_{\alg{p}},
+    \end{equation*}
+    that is,
+    \begin{equation}\label{in:4}
+      \norm{\mu_T(v)}_{\alg{p}} \leqslant \norm{\mu(v)}_{\alg{p}}.
+    \end{equation}
+
+    Moreover, by the weight space decomposition, we can calculate $\mu_T$ explicitly. For any $v \in V \backslash \bb{0}$,
+    \begin{equation*}
+      v = \sum_{\omega \in \Omega(\pi)}v_{\omega} \text{ with } v_{\omega} \in V_{\omega}.
+    \end{equation*}
+    Since $\Pi(X)$ is symmetric for $X \in \alg{a}$ with respect to the inner product defined on $V$, 
+    \begin{equation*}
+      \inn{v_{\omega_1},v_{\omega_2}} = 0, 
+    \end{equation*}
+    for $v_{\omega_1} \in V_{\omega_1}, v_{\omega_2} \in V_{\omega_2}$ and $\omega_1 \neq \omega_2$. Then it can get
+    \begin{equation*}
+      \inn{\mu_T(v),X} = \sum_{\omega \in \Omega(\pi)}\frac{\norm{v_{\omega}}^2}{\norm{v}^2}\inn{\omega, X}.
+    \end{equation*}
+    Therefore,
+    \begin{equation}\label{eq:1}
+      \mu_T(v) = \sum_{\omega \in \Omega(\pi)}\frac{\norm{v_{\omega}}^2}{\norm{v}^2}\omega.
+    \end{equation}
+
+    \item \textbf{Restricted Capacity} \\
+    Let $\cp_T(v) \defeq \inf_{t \in T} \norm{\pi(t)v}$. Then (\ref{eq:3}) shows
+    \begin{equation*}
+      G = \bb{k^{\prime}tk \colon k^{\prime},k \in K,~t \in T}.
+    \end{equation*}
+    So for any $v \in V$,
+    \begin{equation}\label{eq:6}
+      \begin{split}
+        \cp(v) &= \inf_{g \in G} \norm{\pi(g)v} \\
+        &= \inf_{k\in K,t \in T} \norm{\pi(t)\pi(k)v} \\
+        &= \inf_{k \in K} \cp_T(\pi(k)v),
+      \end{split}
+    \end{equation}
+    where the second equality is because $\inn{\cdot,\cdot}$ is $K$-invariant.
+
+    Moreover, $\cp_T(v)$ can also be written more explicitly with repsect to the weight space decomposition. For any $t \in T$ with $t = e^X$ for some $X \in \alg{a}$,
+    \begin{equation*}
+      \pi(t)v = e^{\Pi(X)}v = \sum_{k=0}^{\infty}\frac{1}{k!} \Pi(X)^nv = \sum_{k=0}^{\infty}\frac{1}{k!} \sum_{\omega \in \Omega(\pi)} \inn{\omega,X}_{\alg{p}}^nv_{\omega} = \sum_{\omega \in \Omega(\pi)} e^{\inn{\omega,X}_{\alg{p}}}v_{\omega}.
+    \end{equation*}
+    Therefore, 
+    \begin{equation}\label{eq:2}
+      \cp_T(v)^2 = \inf_{X \in \alg{a}} \sum_{\omega \in \Omega(\pi)} \norm{v_{\omega}}^2e^{2\inn{\omega,X}_{\alg{p}}}
+    \end{equation}
+  \end{enumerate}
+
+  Then we can extend the definition of weight margin \cite{key8} to the real case.
+  \begin{defn}
+    For a given rational reprentation $(\pi,V)$ of $G$, the weight margin is defined as
+    \begin{equation*}
+      \gamma(\pi) \defeq \min\bb{d(0,\cov(\Gamma)) \colon \Gamma \subset \Omega(\pi),~0 \notin \cov(\Gamma)},
+    \end{equation*}
+    where $\cov(\Gamma)$ is the convex hull of $\Gamma$, that is
+    \begin{equation*}
+      \cov(\Gamma) = \bb{\sum_{\omega \in \Gamma} \lambda_{\omega} \omega \colon \lambda_{\omega} \geqslant 0,~ \sum_{\omega \in \Gamma} \lambda_{\omega} = 1},
+    \end{equation*}
+    and $d(0,\cov(\Gamma))$ is the distance between $0$ and $\cov(\Gamma)$ with represpect to $\norm{\cdot}_{\alg{p}}$.
+  \end{defn}
+  \begin{rem}
+    For $v = \sum v_{\omega}$, if let $\Gamma = \bb{\omega \colon v_{\omega} \neq 0}$, then by \cite[Theorem 3.14]{key28} and (\ref{eq:2}),
+    \begin{equation*}
+      0 \notin \cov(\Gamma) ~\Leftrightarrow~ \cp_T(v) = 0,
+    \end{equation*}
+    and by (\ref{eq:1}), $\mu_T(v) \in \cov(\Gamma)$. Therefore,
+    \begin{equation*}
+      \gamma(\pi) = \min\bb{\norm{\mu_T(v)}_{\alg{p}} \colon v \in V \backslash \bb{0},~\cp_T(v) = 0}.
+    \end{equation*}
+  \end{rem}
+
+  \begin{thm}\label{thm:4}
+    For any $v \notin V \backslash \bb{0}$,
+    \begin{equation*}
+      \frac{\cp(v)^2}{\norm{v}^2} \geqslant 1 - \frac{\norm{\mu(v)}_{\alg{p}}}{\gamma(\pi)}.
+    \end{equation*}
+  \end{thm}
+  \begin{proof}
+    Fix a maximal commutative subalgebra $\alg{a} \subset \alg{p}$ with $T = \bb{e^X \colon X \in \alg{a}}$. For any $k \in K$, by (\ref{eq:5}) and (\ref{in:4})
+    \begin{equation*}
+      \norm{\mu_T(\pi(k)v)}_{\alg{p}} \leqslant \norm{\mu(\pi(k)v)}_{\alg{p}} = \norm{\mu(v)}_{\alg{p}}.
+    \end{equation*}
+    Therefore,
+    \begin{equation*}
+      \inf_{k \in K}\bc{1-\frac{\norm{\mu_T(\pi(k)v)}_{\alg{p}}}{\gamma(\pi)}} \geqslant 1-\frac{\norm{\mu(v)}_{\alg{p}}}{\gamma(\pi)}.
+    \end{equation*}
+    Combining this with (\ref{eq:6}), it is sufficiently to prove
+    \begin{equation*}\label{in:5}
+      \cp_T(v)^2\geqslant 1-\frac{\norm{\mu_T(v)}_{\alg{p}}}{\gamma(\pi)} \tag{$*$},
+    \end{equation*}
+    for any $v \in V \backslash \bb{0}$ with $\norm{v} =1$ because $\norm{\pi(k)v} = \norm{v}$.
+    
+    Let $v = \sum_{\omega}v_{\omega}$ with $\norm{v} = 1$. And let $P_{\omega} = \norm{v_{\omega}}^2$ and $P = \bc{P_{\omega}}$. Then $P$ is a probability measure on $\Omega(\pi)$ \footnote{That means $P = (P_{\omega})_{\omega\in\Omega}$ with $P_{\omega} \in [0,1]$ and $\sum_{\omega}P_{\omega}=1$} and by (\ref{eq:1}) and (\ref{eq:2})
+    \begin{equation*}
+      \begin{split}
+        \cp_T(v)^2 &= \inf_{X \in \alg{a}} \sum_{\omega \in \supp (P)} P_{\omega}e^{2\inn{\omega,X}_{\alg{p}}}, \\
+        \mu_T(v) &= \sum_{\omega \in \supp (P)} P_{\omega} \omega,
+      \end{split}
+    \end{equation*}
+    where $\supp (P) = \bb{\omega \colon v_{\omega} \neq 0}$. Let $\Gamma = \cov\bc{\supp (P)}$. 
+
+    If $0 \notin \Gamma$, then $\gamma(\pi) \leqslant \mu_T(v)$ and $\cp_T(v)=0$ by above mention. So (\ref{in:5}) is clearly true. 
+
+    Assume $0 \in \Gamma$. By \cite[Lemma 3.22]{key8}, there are $s \in [0,1]$ and two probability measures $P^{\prime}$ and $P^{\prime\prime}$ on $\Omega(\pi)$ with $\supp(P^{\prime}),\supp(P^{\prime\prime}) \subset \supp (P)$ such that
+    \begin{equation*}
+      P = (1-s) P^{\prime} + sP^{\prime\prime},~\sum_{\omega}P_{\omega}^{\prime}\omega = 0,
+    \end{equation*}
+    and if $s > 0$, then $0 \notin \cov\bc{\supp (P^{\prime\prime})}$. Therefore,
+    \begin{equation*}
+      \mu_T(v) = \sum_{\omega\in \supp(P)} \bc{(1-s) P_{\omega}^{\prime} + sP_{\omega}^{\prime\prime}} \omega = s\sum_{\omega\in \supp(P)}P_{\omega}^{\prime\prime} \omega.
+    \end{equation*}
+
+    If $s > 0$, then $0 \notin \cov\bc{\supp (P^{\prime\prime})}$ implies 
+    \begin{equation*}
+      \norm{\mu_T(v)}_{\alg{p}} = s \norm{\sum_{\omega}P_{\omega}^{\prime\prime} \omega}_{\alg{p}} \geqslant s \gamma(\pi) ~\Rightarrow~ \frac{\norm{\mu_T(v)}_{\alg{p}}}{\gamma(\pi)} \geqslant s.
+    \end{equation*}
+
+    If $s = 0$, clearly $\norm{\mu_T(v)}_{\alg{p}} / \gamma(\pi) \geqslant s$.
+
+    Then we have
+    \begin{equation*}
+      \begin{split}
+        \cp_T(v)^2 &\geqslant (1-s)\inf_{X \in \alg{a}} \sum_{\omega \in \supp (P^{\prime})} P^{\prime}_{\omega}e^{2\inn{\omega,X}_{\alg{p}}} \\
+        &\geqslant (1-s)\inf_{X \in \alg{a}} \sum_{\omega \in \supp (P^{\prime})} e^{2\inn{\sum_{\omega}P_{\omega}^{\prime}\omega,X}_{\alg{p}}} \\ 
+        &= 1-s,
+      \end{split}
+    \end{equation*}
+    where the second inequality is by the Jensen’s inequality applied on the convex function $f(\omega) = e^{2\inn{\omega,X}_{\alg{p}}}$.
+  \end{proof}
+
+  Therefore, combining Theorem \ref{thm:3} and Theorem \ref{thm:4}, we have 
+  \begin{equation}\label{in:6}
+    1 - \frac{\norm{\mu(v)}_{\alg{p}}}{\gamma(\pi)} \leqslant \frac{\cp(v)^2}{\norm{v}^2} \leqslant 1 - \frac{\norm{\mu(g)}_{\alg{p}}^2}{4N(\pi)^2}.
+  \end{equation}
+  This strengthens the Kempf-Ness theorem: 
+  \begin{enumerate}[label = (\arabic*)]
+    \item If $0 \notin \clo{\pi(G)}$, then
+    \begin{equation*}
+      \begin{split}
+        \cp(v) > 0 & \Rightarrow \exists~\bb{g_k} \text{ s.t. } \norm{\pi(g_k)v} \sto \cp(v) \text{ with }\norm{\pi(g_k)v} \neq 0~\forall~k \\
+        &\Rightarrow 1 - \frac{\norm{\mu({\pi(g_k)v)}}_{\alg{p}}^2}{4N(\pi)^2} \geqslant \frac{\cp(v)^2}{\norm{\pi(g_k)v}^2} \sto 1 \\
+        &\Rightarrow \norm{\mu({\pi(g_k)v)}}_{\alg{p}}^2 \sto 0 \\
+        &\Rightarrow 0 \in \mu(\clo{\pi(G)v}).
+      \end{split} 
+    \end{equation*} 
+    \item If $0 \in \mu(\clo{\pi(G)v})$,
+    \begin{equation*}
+      \begin{split}
+        &\exists~\bb{g_k} \text{ s.t. } \norm{\mu({\pi(g_k)v)}}_{\alg{p}}^2 \sto 0 \text{ with }\norm{\pi(g_k)v} \neq 0~\forall~k \\
+        \Rightarrow &~ \frac{\cp(v)^2}{\norm{\pi(g_k)v}^2} \geqslant 1 - \frac{\norm{\mu(\pi(g_k)v)}_{\alg{p}}}{\gamma(\pi)} \sto 1\\
+        \Rightarrow &~ \cp(v)> 0.
+      \end{split}
+    \end{equation*}
+  \end{enumerate}
+
+  \section{Application to Norm Minimization}
+
+  Now because of the strengthened Kenpf-Ness theorem, we can get a stronger relationship between the infimum of Kempf-Ness function and its gradient. Replacing $v$ by $\pi(x^{\frac{1}{2}})v$ in \ref{in:6} and taking the logarithm, it can see
+  \begin{equation*}
+    \log\bc{1-\frac{\norm{\nabla f_v(x)}_{x}}{\gamma(\pi)}} \leqslant f_{v,\inf}- f_v(x) \leqslant \log\bc{1-\frac{\norm{\nabla f_v(x)}_{x}^2}{4N(\pi)^2}}.
+  \end{equation*}
+  To solve the norm minimization problem, for any $\varepsilon > 0$, we want to find $x \in P$ such that
+  \begin{equation*}
+    f_v(x) - f_{v,\inf} < \varepsilon.
+  \end{equation*}
+  So by the left side of the above inequality, it is sufficient to show
+  \begin{equation*}
+    -\log\bc{1-\frac{\norm{\nabla f_v(x)}_{x}}{\gamma(\pi)}} \leqslant \varepsilon.
+  \end{equation*}
+  That is to find $x \in P$ such that
+  \begin{equation*}
+    \norm{\nabla f_v(x)}_{x} < \gamma(\pi)\bc{1-e^{-\varepsilon}}.
+  \end{equation*}
+  Clearly, $\frac{t}{2} \leqslant 1 - e^{-t}$ for any $0<t<\log 2$. Therefore, for any $0 < \varepsilon < \log2$,
+  \begin{equation*}
+    \norm{\nabla f_v(x)}_{x} < \frac{1}{2}\gamma(\pi)\varepsilon \leqslant \gamma(\pi)\bc{1-e^{-\varepsilon}}~\Rightarrow~f_v(x) - f_{v,\inf} < \varepsilon.
+  \end{equation*}
+  Using this conclusion, by applying the RGD algorithm to $f_v$ to get $x$ sucht that
+  \begin{equation*}
+    \norm{\nabla f_v(x)}_{x} < \frac{1}{2}\gamma(\pi)\varepsilon,
+  \end{equation*}
+  the norm minimization problem are solved.
+
+  \begin{thm}[Norm Minimization Problem]
+    For $v \in V$ with $f_{v \inf} > -\infty$ and $\varepsilon >0$, by setting
+    \begin{equation*}
+      \eta = \frac{1}{N(\pi)^2},~~T > \frac{8N(\pi)^2}{\gamma(\pi)^2\varepsilon^2}\bc{\log \norm{v}^2-f_{v,\inf}},
+    \end{equation*}
+    in the RGD algorithm, it returns $x_n \in P$ such that $f_v(x_n) - f_{v,\inf} < \varepsilon$.
+  \end{thm}
+
+  \chapter{\texorpdfstring{$p$}{p}-Scaling Problem}
+
+  \section{Moment Polytope}
+
+  Considering the matrix scaling problem, we have seen that the scaling problem of the action $ST(n)^2$ on $M_n(\R)$ is equivalent to the almost scalability. Now how to consider the more general version scaling problem, $(\mathbf{r},\mathbf{c})$-scaling problem from the action view? Firstly, the moment map is
+  \begin{equation*}
+    \nabla f_A(s,t) = \frac{n}{\sum_{i,j}x_ia_{ij}y_j} \bc{\sum_j x_ia_{ij}y_j,\sum_i x_ia_{ij}y_j} - \bc{\mathds{1},\mathds{1}}.
+  \end{equation*}
+  So it can see $A = (a_{ij})$ is almost $(\mathbf{r},\mathbf{c})$-scalable if and only if 
+  \begin{equation*}
+    (\mathbf{r},\mathbf{c})-\frac{R}{n}(\mathds{1},\mathds{1}) \in \clo{\Img \nabla f_A(\R^n,\R^n)},
+  \end{equation*}
+  where $R = \sum_ix_i =\sum_j y_j$. Then we want to generalize this concept for any rational representation $(\pi,V)$ of an arbitrary real reductive Lie group $G$. 
+
+  Firstly, let $\alg{g} = \alg{k} + \alg{p}$ be the Cartan decomposition of a real reductive Lie group $G$. Considering $K = G \cap O(n)$ acting on $\alg{p}$ by conjugation, that is
+  \begin{center}
+    \begin{tabular}{c c l}
+      $K \times \alg{p}$ & $\longrightarrow$ & $ \alg{p}$ \\
+       $(k,X)$ & $\longmapsto$ & $kXk^T$
+    \end{tabular}
+  \end{center}
+  which induces the quotient linear space $\alg{p}/K$, and $s \colon \alg{p} \sto \alg{p}/K$ is denoted the canonical projection.
+
+  Considering a rational representation $(\pi,V)$ of $G$, let $V$ be equipped with an inner product $\inn{\cdot,\cdot}$ corresponding to the Cartan decomposition. And let $\mu \colon V \backslash \bb{0} \sto \alg{p}$ be the moment map defined as before.
+  \begin{defn}
+    Given $v \in V \backslash \bb{0}$, the moment polytope is defined as
+    \begin{equation*}
+      \Delta(v) \defeq \bb{s(\mu(w)) \colon w \in \clo{\pi(G)v}}.
+    \end{equation*}
+  \end{defn}
+  \begin{rem}
+    In the complex case, the convexity of $\Delta(v)$ came from the symplectic structure of complex vector space \cite{key23}. And this result can be extended to the real case \cite{key10,key11}, so $\Delta(v)$ is also a convex polytope in $\alg{p}/K$.
+  \end{rem}
+
+  Let's describe $\Delta(v)$ more explicitly. For any $X \in \alg{p}$, $X = X^T$, so there is a unique $k \in K$ such that
+  \begin{equation*}
+    kXk^T = \left(
+            \begin{array}{ccc}
+              \lambda_1 & & \\
+              & \ddots &\\
+              &&\lambda_n
+            \end{array}
+          \right)
+  \end{equation*}
+  with $\lambda_1 \geqslant \cdots \geqslant \lambda_n$. Therefore, we can view
+  \begin{equation*}
+    \alg{p}/K = \bb{\diag\bc{\lambda_1, \cdots, \lambda_n} \colon \lambda_1 \geqslant \cdots \geqslant \lambda_n}
+  \end{equation*}
+  and the canonical projection $s(X)= \diag\bc{\lambda_1, \cdots, \lambda_n}$, where $\lambda_1 \geqslant \cdots \geqslant \lambda_n$ are eigenvalues of $X$. Therefore, $\Delta(v)$ is the set of all arranged eigenvalues of $\mu(w)$ for $w \in \clo{\pi(G)v}$.
+
+  Therefore, the $p$-scaling problem is to find $g \in G$ such that
+  \begin{equation*}
+    \norm{s\bc{\mu(\pi(g)v)}-p}_{F} < \varepsilon,
+  \end{equation*}
+  for a given $p \in \Delta(v)$ and $\varepsilon > 0$.
+
+  \section{Busemann Function}
+
+  \cite{key8} solved the $p$-scaling problem for the complex case by applying the theorem of highest weight, which depends on the complex structure. \cite{key12} provided another method to analyze this problem from a geometric view. Since $P \simeq G/K$ has the structure of being a Hadamard manifold without considering the complex structure. We can apply the results in \cite{key12} to consider the $p$-scaling problem for the real case.
+
+  Let set $(\pi,V),G$ and the Cartan decomposition of $G$ as the above section.
+
+  \begin{defn}
+    For any $X \in \alg{p}$, the Busemann function $b_X$ corresponding to $X$ is
+    \begin{center}
+      \begin{tabular}{rrcl}
+        $b_X \colon$ & $P$ & $\longrightarrow$ & $\R$\\
+        ~ & $x$ & $\longmapsto$ & $\lim_{t \sto \infty}d\bc{x,e^{tX}}-t$
+      \end{tabular}
+    \end{center}
+    where $d\bc{x,e^{tX}}$ is the geodesic distance from $x$ to $e^{tX}$.
+  \end{defn}
+
+  There is a more general version of Kempf-Ness theorem from the optimization view.
+  \begin{thm}[\cite{key12} Theorem 2.27]
+    Consider the Kempf-Ness function $f_v$ and the Busemann function $b_X$ corresponding to $X \in \alg{p}$,
+    \begin{equation*}
+      \begin{split}
+        ~&\exists~\bb{x_i} \subset P \text{ s.t. }\lim_{i \sto \infty}\norm{\nabla \bc{f_v+b_X}(x_i)}_{x_i} = 0 \\
+        \Leftrightarrow& \inf_{x \in P} (f_v + b_X)(x) > -\infty.
+      \end{split}
+    \end{equation*}
+  \end{thm}
+
+  Moreover, if $p \in \Delta(v) \subset \alg{p}$ (by the canonical projection $s$), \cite[Section 3.2]{key12} showed
+  \begin{equation*}
+    \inf_{x \in P} (f_v + b_p)(x) > -\infty.
+  \end{equation*}
+  And the gradient of $f_v+b_p$ can be calculated explicitly.
+  \begin{prop}[\cite{key12} Proposition 2.35]
+    For any $p \in \Delta(v)$, 
+    \begin{equation*}
+      \norm{\nabla(f_v+b_p)(x)}_{x} = \norm{\mu(\pi(x^{\frac{1}{2}})v)-kpk^T}_{F},
+    \end{equation*}
+    where $x^{\frac{1}{2}} = bk$ for upper triangular matrix $b$ and orthogonal matrix $k$.
+  \end{prop}
+  Therefore,
+  \begin{equation*}
+    \norm{\nabla(f_v+b_p)(x)}_{x} \sto 0 ~\Leftrightarrow~ s\bc{\mu(\pi(x^{\frac{1}{2}})v)} \sto p.
+  \end{equation*}
+
+  Combining these results, we can find that for a given $p \in \Delta(v)$, the $p$-scaling problem is equivalent to the optimization problem
+  \begin{equation*}
+    \inf_{x \in P} (f_v + b_p)(x).
+  \end{equation*}
+  Furthermore, $f_v + b_p$ is a geodesic convex function on $P$, so this optimization problem may have some beautiful properties. For example, we may apply the RGD algorithm to $f_v + b_p$ to solve the $p$-scaling problem. But there is an open problem whether $b_p$ is $L$-smooth for some $L$. 
+
+
+  \chapter{Conclusions}
+
+  In this thesis, we studied the norm minimization problem and the scaling problem of real reductive Lie group action, which is a generalization of the complex case \cite{key8}.
+
+  Firstly, by applying the Cartan decomposition of a real reductive Lie group, these two problems are transformed to optimize the Kempf-Ness function $f_v$ on Riemannian manifold $P$, which is a Hadamard manifold. Since $f_v$ is a geodesically convex function, optimizing $f_v$ is an interesting nonconvex type optimization problem.
+
+  The Riemannian gradient descent algorithm is a classical method to deal with the optimization problem on a Riemannian manifold, but it requires the target function sastisfying a smoothness condition. By extending the results of the complex case, we proved that the Kempf-Ness function is indeed $N(\pi)^2$-smooth so that we can apply the RGD algorithm to solve the scaling problem.
+
+  We proved that the strengthened Kempf-Ness theorem is also true for any real reductive Lie group action. And this result provided a stronger relationship between the infimum of Kempf-Ness function and its gradient. Therefore, the RGD algorithm can be applied to solve the norm minimization problem.
+
+  Considering the $p$-scaling problem, we constructed a new function by adding the Kempf-Ness function to a Busemann function. By applying the results in \cite{key12}, we find the $p$-scaling problem is also equivalent to optimizing this new function on $P$. 
+
+  Finally, there are some related unsolved problems. Whether the Busemann function is sufficiently smooth is important to solve the $p$-scaling problem by applying the RGD algorithm. Considering the moment polytope membership, that is to determine whether $p \in \Delta(v)$, \cite{key12} showed that is equivalent to determining whether $f_v+b_p$ is bounded below for the complex case. But for the real case, it is still unknown.
+
+
+\backmatter
+\chapter{Acknowledgements}
+
+  First of all, I want to thank my supervisor, Prof. Hiroshi Hirai. His help is important for me to proceed with my research. He recommended me to study the research topic from my interests and inspired me to do related research. He gave me a lot of important suggestions for my research and this thesis. And I would like to thank Mr. Ryosuke Sato for his suggestions for this thesis.
+
+  I also would like to thank Prof. Kunihiko Sadakane and members of the 2nd laboratory for providing me with a great environment. Especially, I am grateful to former members Prof. Shuhei Denzumi and Ms. Rie Homma. They helped me a lot both in my study and in my life.
+
+  Then I would like to thank my friend, Mr. Zhao Fan, who is also a student at the University of Tokyo. Our friendship lasted ten years. Because of his company and help, I have never felt lonely even in another country.
+
+  Finally, I appreciate my family. Because of their financial and emotional support, I was able to complete my study.
+
+
+\printbibliography[heading=bibintoc]
+
+\appendix
+
+\end{document}
